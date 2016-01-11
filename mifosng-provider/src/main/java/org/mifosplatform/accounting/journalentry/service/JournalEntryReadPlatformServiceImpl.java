@@ -93,6 +93,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                     .append("journalEntry.transaction_id,")
                     .append(" glAccount.name as glAccountName, glAccount.gl_code as glAccountCode,glAccount.id as glAccountId, ")
                     .append(" journalEntry.office_id as officeId, office.name as officeName, journalEntry.ref_num as referenceNumber, ")
+                    .append("journalEntry.group_Id as groupId,journalEntry.client_Id as clientId, ")
                     .append(" journalEntry.manual_entry as manualEntry,journalEntry.entry_date as transactionDate, ")
                     .append(" journalEntry.type_enum as entryType,journalEntry.amount as amount, journalEntry.transaction_id as transactionId,")
                     .append(" journalEntry.entity_type_enum as entityType, journalEntry.entity_id as entityId, creatingUser.id as createdByUserId, ")
@@ -173,6 +174,10 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             final CurrencyData currency = new CurrencyData(currencyCode, currencyName, currencyDigits, inMultiplesOf,
                     currencyDisplaySymbol, currencyNameCode);
 
+           final Long groupId=rs.getLong("groupId");
+           final Long clientId=rs.getLong("clientId");
+            
+            
             if (associationParametersData.isRunningBalanceRequired()) {
                 officeRunningBalance = rs.getBigDecimal("officeRunningBalance");
                 organizationRunningBalance = rs.getBigDecimal("organizationRunningBalance");
@@ -224,7 +229,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             return new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glCode, accountType, transactionDate,
                     entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, createdDate, createdByUserName,
                     comments, reversed, referenceNumber, officeRunningBalance, organizationRunningBalance, runningBalanceComputed,
-                    transactionDetailData, currency);
+                    transactionDetailData, currency,groupId,clientId);
         }
     }
 

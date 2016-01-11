@@ -280,9 +280,10 @@ public class JournalEntryRunningBalanceUpdateServiceImpl implements JournalEntry
             final BigDecimal amount = rs.getBigDecimal("amount");
             final int entryTypeId = JdbcSupport.getInteger(rs, "entryType");
             final EnumOptionData entryType = AccountingEnumerations.journalEntryType(entryTypeId);
-
+            final Long groupId=rs.getLong("groupId");
+            final Long clientId=rs.getLong("clientId");
             return new JournalEntryData(id, officeId, null, null, glAccountId, null, accountType, null, entryType, amount, null, null,
-                    null, null, null, null, null, null, null, null, null, null, null, null, null);
+                    null, null, null, null, null, null, null, null, null, null, null, null, null,groupId,clientId);
         }
     }
 

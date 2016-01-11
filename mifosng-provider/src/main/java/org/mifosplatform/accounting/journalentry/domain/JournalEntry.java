@@ -7,21 +7,27 @@ package org.mifosplatform.accounting.journalentry.domain;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.apache.commons.lang.StringUtils;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.mifosplatform.accounting.glaccount.domain.GLAccount;
 import org.mifosplatform.infrastructure.core.domain.AbstractAuditableCustom;
 import org.mifosplatform.organisation.office.domain.Office;
+import org.mifosplatform.portfolio.client.domain.Client;
 import org.mifosplatform.portfolio.client.domain.ClientTransaction;
+import org.mifosplatform.portfolio.group.domain.Group;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTransaction;
 import org.mifosplatform.portfolio.paymentdetail.domain.PaymentDetail;
 import org.mifosplatform.portfolio.savings.domain.SavingsAccountTransaction;
@@ -92,9 +98,19 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
 
     @Column(name = "ref_num")
     private String referenceNumber;
-
+    
+    @LazyCollection(LazyCollectionOption.TRUE)
+    @ManyToOne
+    @JoinColumn(name = "client_Id",nullable=true)
+    private Client client;
+    
+    @LazyCollection(LazyCollectionOption.TRUE)
+    @ManyToOne
+    @JoinColumn(name = "group_Id",nullable=true)
+    private Group group;
+    
     public static JournalEntry createNew(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount,
-            final String currencyCode, final String transactionId, final boolean manualEntry, final Date transactionDate,
+           final String currencyCode, final String transactionId, final boolean manualEntry, final Date transactionDate,
             final JournalEntryType journalEntryType, final BigDecimal amount, final String description, final Integer entityType,
             final Long entityId, final String referenceNumber, final LoanTransaction loanTransaction,
             final SavingsAccountTransaction savingsTransaction, final ClientTransaction clientTransaction) {
@@ -104,10 +120,10 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
     }
 
     protected JournalEntry() {
-        //
+       
     }
 
-    public JournalEntry(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount, final String currencyCode,
+   public JournalEntry(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount, final String currencyCode,
             final String transactionId, final boolean manualEntry, final Date transactionDate, final Integer type, final BigDecimal amount,
             final String description, final Integer entityType, final Long entityId, final String referenceNumber,
             final LoanTransaction loanTransaction, final SavingsAccountTransaction savingsTransaction,
@@ -130,9 +146,57 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
         this.savingsTransaction = savingsTransaction;
         this.clientTransaction = clientTransaction;
         this.paymentDetail = paymentDetail;
+        
+    }
+    
+    
+    public static JournalEntry createNew1(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount,
+            final String currencyCode, final String transactionId, final boolean manualEntry, final Date transactionDate,
+            final JournalEntryType journalEntryType, final BigDecimal amount, final String description, final Integer entityType,
+            final Long entityId, final String referenceNumber, final LoanTransaction loanTransaction,
+            final SavingsAccountTransaction savingsTransaction, final ClientTransaction clientTransaction,final Client client,final Group group) {
+        return new JournalEntry(office, paymentDetail, glAccount, currencyCode, transactionId, manualEntry, transactionDate,
+                journalEntryType.getValue(), amount, description, entityType, entityId, referenceNumber, loanTransaction,
+                savingsTransaction, clientTransaction,client,group);
     }
 
-    public boolean isDebitEntry() {
+    
+    public JournalEntry(final Office office, final PaymentDetail paymentDetail, final GLAccount glAccount, final String currencyCode,
+            final String transactionId, final boolean manualEntry, final Date transactionDate, final Integer type, final BigDecimal amount,
+            final String description, final Integer entityType, final Long entityId, final String referenceNumber,
+            final LoanTransaction loanTransaction, final SavingsAccountTransaction savingsTransaction,
+            final ClientTransaction clientTransaction,final Client client,final Group group) {
+        this.office = office;
+        this.glAccount = glAccount;
+        this.reversalJournalEntry = null;
+        this.transactionId = transactionId;
+        this.reversed = false;
+        this.manualEntry = manualEntry;
+        this.transactionDate = transactionDate;
+        this.type = type;
+        this.amount = amount;
+        this.description = StringUtils.defaultIfEmpty(description, null);
+        this.entityType = entityType;
+        this.entityId = entityId;
+        this.referenceNumber = referenceNumber;
+        this.currencyCode = currencyCode;
+        this.loanTransaction = loanTransaction;
+        this.savingsTransaction = savingsTransaction;
+        this.clientTransaction = clientTransaction;
+        this.paymentDetail = paymentDetail;
+        this.client=client;
+        this.group=group;
+        
+    }
+    
+
+   
+
+    
+    
+    
+    
+	public boolean isDebitEntry() {
         return JournalEntryType.DEBIT.getValue().equals(this.type);
     }
 
@@ -199,5 +263,16 @@ public class JournalEntry extends AbstractAuditableCustom<AppUser, Long> {
     public Integer getEntityType() {
         return this.entityType ;
     }
-    
+
+	public Client getClient() {
+		return this.client;
+	}
+
+	
+
+	public Group getGroup() {
+		return this.group;
+	}
+
+	    
 }

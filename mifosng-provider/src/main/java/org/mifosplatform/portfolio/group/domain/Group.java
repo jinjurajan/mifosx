@@ -30,7 +30,10 @@ import javax.persistence.Transient;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
+import org.mifosplatform.accounting.journalentry.domain.JournalEntry;
 import org.mifosplatform.infrastructure.codes.domain.CodeValue;
 import org.mifosplatform.infrastructure.core.api.JsonCommand;
 import org.mifosplatform.infrastructure.core.data.ApiParameterError;
@@ -126,6 +129,10 @@ public final class Group extends AbstractPersistable<Long> {
     
     @Column(name = "account_no", length = 20, unique = true, nullable = false)
     private String accountNumber;
+    
+    @LazyCollection(LazyCollectionOption.FALSE)
+    @OneToMany(mappedBy="group")
+    private List<JournalEntry> journal=new ArrayList<>();
     
     @Transient
     private boolean accountNumberRequiresAutoGeneration = false;

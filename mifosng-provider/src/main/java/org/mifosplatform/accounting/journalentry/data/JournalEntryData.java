@@ -11,6 +11,8 @@ import org.joda.time.LocalDate;
 import org.mifosplatform.accounting.glaccount.data.GLAccountData;
 import org.mifosplatform.infrastructure.core.data.EnumOptionData;
 import org.mifosplatform.organisation.monetary.data.CurrencyData;
+import org.mifosplatform.portfolio.client.domain.Client;
+import org.mifosplatform.portfolio.group.domain.Group;
 
 /**
  * Immutable object representing a General Ledger Account
@@ -64,6 +66,11 @@ public class JournalEntryData {
 
     @SuppressWarnings("unused")
     private final TransactionDetailData transactionDetails;
+    
+    @SuppressWarnings("unused")
+    private final Long groupId;
+    @SuppressWarnings("unused")
+    private final Long clientId;
 
     public JournalEntryData(final Long id, final Long officeId, final String officeName, final String glAccountName,
             final Long glAccountId, final String glAccountCode, final EnumOptionData glAccountClassification,
@@ -71,7 +78,7 @@ public class JournalEntryData {
             final Boolean manualEntry, final EnumOptionData entityType, final Long entityId, final Long createdByUserId,
             final LocalDate createdDate, final String createdByUserName, final String comments, final Boolean reversed,
             final String referenceNumber, final BigDecimal officeRunningBalance, final BigDecimal organizationRunningBalance,
-            final Boolean runningBalanceComputed, final TransactionDetailData transactionDetailData, final CurrencyData currency) {
+            final Boolean runningBalanceComputed, final TransactionDetailData transactionDetailData, final CurrencyData currency,final Long groupId,final Long clientId) {
         this.id = id;
         this.officeId = officeId;
         this.officeName = officeName;
@@ -97,6 +104,8 @@ public class JournalEntryData {
         this.runningBalanceComputed = runningBalanceComputed;
         this.transactionDetails = transactionDetailData;
         this.currency = currency;
+        this.clientId=clientId;
+        this.groupId=groupId;
     }
 
     public static JournalEntryData fromGLAccountData(final GLAccountData glAccountData) {
@@ -126,10 +135,12 @@ public class JournalEntryData {
         final Boolean runningBalanceComputed = null;
         final TransactionDetailData transactionDetailData = null;
         final CurrencyData currency = null;
+        final Long groupId=null;
+        final Long clientId=null;
         return new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glAccountCode, glAccountClassification,
                 transactionDate, entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, createdDate,
                 createdByUserName, comments, reversed, referenceNumber, officeRunningBalance, organizationRunningBalance,
-                runningBalanceComputed, transactionDetailData, currency);
+                runningBalanceComputed, transactionDetailData, currency,groupId,clientId);
     }
 
     public Long getId() {
