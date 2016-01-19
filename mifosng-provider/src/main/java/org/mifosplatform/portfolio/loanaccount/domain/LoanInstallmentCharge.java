@@ -6,6 +6,7 @@
 package org.mifosplatform.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -15,6 +16,7 @@ import javax.persistence.Table;
 
 import org.mifosplatform.organisation.monetary.domain.MonetaryCurrency;
 import org.mifosplatform.organisation.monetary.domain.Money;
+import org.mifosplatform.portfolio.common.Utils;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
 @Entity
@@ -32,6 +34,10 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
     @Column(name = "amount", scale = 6, precision = 19, nullable = false)
     private BigDecimal amount;
 
+    @Column(name = "amount_income_derived", scale = 6, precision = 19, nullable = false)
+    private BigDecimal incomeAmount;
+    
+    
     @Column(name = "amount_paid_derived", scale = 6, precision = 19, nullable = true)
     private BigDecimal amountPaid;
 
@@ -67,6 +73,24 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
         this.amountWrittenOff = null;
     }
 
+    
+    public LoanInstallmentCharge(final BigDecimal amount, final LoanCharge loanCharge, final LoanRepaymentScheduleInstallment installment,
+            final Map<String, BigDecimal> taxComponents) {
+        this.loancharge = loanCharge;
+        this.installment = installment;
+        this.amount = amount;
+        this.amountOutstanding = amount;
+        this.amountPaid = null;
+        this.amountWaived = null;
+        this.amountWrittenOff = null;
+        if (loanCharge.isGovernmentChargeApplicable()) {
+            this.incomeAmount = Utils.splitCharge(amount, taxComponents).get(Utils.ACTUAL_CHARGE);
+        } else {
+            this.incomeAmount = this.amount;
+        }
+
+    }
+    
     public void copyFrom(final LoanInstallmentCharge loanChargePerInstallment) {
         this.amount = loanChargePerInstallment.amount;
         this.installment = loanChargePerInstallment.installment;
@@ -82,6 +106,16 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
         return getAmountWaived(currency);
     }
 
+    
+    
+    public Money writtenOff(final MonetaryCurrency currency) {
+        this.amountWrittenOff = this.amountOutstanding;
+        this.amountOutstanding = BigDecimal.ZERO;
+        this.paid = false;
+        this.waived = true;
+        return getAmountWrittenOff(currency);
+    }
+    
     public Money getAmountWaived(final MonetaryCurrency currency) {
         return Money.of(currency, this.amountWaived);
     }
@@ -127,6 +161,12 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
 
     public BigDecimal getAmountOutstanding() {
         return this.amountOutstanding;
+    }
+    
+    
+    
+    public Money getAmountOutstanding(final MonetaryCurrency currency) {
+        return Money.of(currency, this.amountOutstanding);
     }
 
     private BigDecimal calculateAmountOutstanding(final MonetaryCurrency currency) {
@@ -191,6 +231,36 @@ public class LoanInstallmentCharge extends AbstractPersistable<Long> {
         return amountPaidOnThisCharge;
     }
 
+    
+    
+    public Money updateWrittenOffPaidAmountBy(final Money incrementBy) {
+        Money amountPaidToDate = Money.of(incrementBy.getCurrency(), this.amountPaid);
+        Money amountOutstanding = Money.of(incrementBy.getCurrency(), this.amountWrittenOff);
+        Money amountPaidOnThisCharge = Money.zero(incrementBy.getCurrency());
+        if (incrementBy.isGreaterThanOrEqualTo(amountOutstanding)) {
+            amountPaidOnThisCharge = amountOutstanding;
+            amountPaidToDate = amountPaidToDate.plus(amountOutstanding);
+            this.amountPaid = amountPaidToDate.getAmount();
+            this.amountWrittenOff = BigDecimal.ZERO;
+        } else {
+            amountPaidOnThisCharge = incrementBy;
+            amountPaidToDate = amountPaidToDate.plus(incrementBy);
+            this.amountPaid = amountPaidToDate.getAmount();
+            amountOutstanding = amountOutstanding.minus(amountPaidOnThisCharge);
+            this.amountWrittenOff = amountOutstanding.getAmount();
+        }
+        if (determineIfFullyPaid()) {
+            Money waivedAmount = getAmountWaived(incrementBy.getCurrency()).plus(getAmountWrittenOff(incrementBy.getCurrency()));
+            if (waivedAmount.isGreaterThanZero()) {
+                this.waived = true;
+            } else {
+                this.paid = true;
+            }
+        }
+
+        return amountPaidOnThisCharge;
+    }
+    
     public Money getAmountWrittenOff(final MonetaryCurrency currency) {
         return Money.of(currency, this.amountWrittenOff);
     }

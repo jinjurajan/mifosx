@@ -28,6 +28,10 @@ public interface LoanScheduleModelPeriod {
     BigDecimal interestDue();
 
     BigDecimal feeChargesDue();
+    
+    
+    BigDecimal penaltyChargesIncomeDerived();
+    BigDecimal feeChargesIncomeDerived();
 
     BigDecimal penaltyChargesDue();
 

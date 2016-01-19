@@ -5,6 +5,7 @@
  */
 package org.mifosplatform.portfolio.loanaccount.service;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Map;
 
@@ -87,7 +88,10 @@ public interface LoanWritePlatformService {
 
 	CommandProcessingResult addAndDeleteLoanDisburseDetails(Long loanId, JsonCommand command);
 
-    void applyOverdueChargesForLoan(Long loanId, Collection<OverdueLoanScheduleData> overdueLoanScheduleDatas);
+    //void applyOverdueChargesForLoan(Long loanId, Collection<OverdueLoanScheduleData> overdueLoanScheduleDatas);
+    void applyOverdueChargesForLoan(Long loanId, Collection<OverdueLoanScheduleData> overdueLoanScheduleDatas,
+            Map<String, BigDecimal> taxComponents);
+
 
     void recalculateInterest(long loanId);
 

@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.joda.time.LocalDate;
@@ -289,8 +290,14 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         LocalDate calculatedRepaymentsStartingFromDate = accountDomainService.getCalculatedRepaymentsStartingFromDate(
                 loan.getDisbursementDate(), loan, calendarInstance);
         FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
+        /*LoanApplicationTerms loanApplicationTerms = loan.constructLoanApplicationTerms(applicationCurrency,
+                calculatedRepaymentsStartingFromDate, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO);*/
+        
         LoanApplicationTerms loanApplicationTerms = loan.constructLoanApplicationTerms(applicationCurrency,
-                calculatedRepaymentsStartingFromDate, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO);
+                calculatedRepaymentsStartingFromDate, restCalendarInstance,null);
+        /*(final ApplicationCurrency applicationCurrency,
+                final LocalDate calculatedRepaymentsStartingFromDate, final CalendarInstance calendarInstanceForInterestRecalculation,
+                final Map<String, BigDecimal> taxComponents)*/
         return loanApplicationTerms;
     }
 

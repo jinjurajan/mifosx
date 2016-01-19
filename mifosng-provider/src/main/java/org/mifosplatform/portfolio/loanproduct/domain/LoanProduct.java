@@ -152,6 +152,10 @@ public class LoanProduct extends AbstractPersistable<Long> {
 
     @Column(name = "can_define_fixed_emi_amount")
     private boolean canDefineInstallmentAmount;
+    
+    
+    @Column(name = "instalment_amount_in_multiples_of", nullable = true)
+    private Integer instalmentAmountInMultiplesOf;
 
     @Column(name = "instalment_amount_in_multiples_of", nullable = true)
     private Integer installmentAmountInMultiplesOf;
@@ -1062,6 +1066,10 @@ public class LoanProduct extends AbstractPersistable<Long> {
         return loanProductMinMaxConstraints().getMaxNominalInterestRatePerPeriod();
     }
 
+    public Integer getInstalmentAmountInMultiplesOf() {
+        return this.instalmentAmountInMultiplesOf;
+    }
+    
     public Integer getNumberOfRepayments() {
         return this.loanProductRelatedDetail.getNumberOfRepayments();
     }

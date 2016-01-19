@@ -7,7 +7,7 @@ package org.mifosplatform.portfolio.loanaccount.domain;
 
 public enum LoanTransactionType {
 
-    INVALID(0, "loanTransactionType.invalid"), //
+    /*INVALID(0, "loanTransactionType.invalid"), //
     DISBURSEMENT(1, "loanTransactionType.disbursement"), //
     REPAYMENT(2, "loanTransactionType.repayment"), //
     CONTRA(3, "loanTransactionType.contra"), //
@@ -15,37 +15,79 @@ public enum LoanTransactionType {
     REPAYMENT_AT_DISBURSEMENT(5, "loanTransactionType.repaymentAtDisbursement"), //
     WRITEOFF(6, "loanTransactionType.writeOff"), //
     MARKED_FOR_RESCHEDULING(7, "loanTransactionType.marked.for.rescheduling"), //
-    /**
+    *//**
      * This type of transactions is allowed on written-off loans where mfi still
      * attempts to recover payments from applicant after writing-off.
-     */
+     *//*
     RECOVERY_REPAYMENT(8, "loanTransactionType.recoveryRepayment"), //
     WAIVE_CHARGES(9, "loanTransactionType.waiveCharges"), //
-    /**
+    *//**
      * Transaction represents an Accrual (For either interest, charge or a
      * penalty
-     **/
+     **//*
     ACCRUAL(10, "loanTransactionType.accrual"), //
 
-    /***
+    *//***
      * A Loan Transfer involves two steps, first a "initiate" Loan transfer
      * transaction done by the Source branch followed by a "complete" loan
      * transaction initiated by the destination branch
-     **/
+     **//*
     INITIATE_TRANSFER(12, "loanTransactionType.initiateTransfer"), //
     APPROVE_TRANSFER(13, "loanTransactionType.approveTransfer"), //
     WITHDRAW_TRANSFER(14, "loanTransactionType.withdrawTransfer"), //
     REJECT_TRANSFER(15, "loanTransactionType.rejectTransfer"), //
     REFUND(16, "loanTransactionType.refund"), //
     CHARGE_PAYMENT(17, "loanTransactionType.chargePayment"),  //
-    REFUND_FOR_ACTIVE_LOAN(18, "loanTransactionType.refund");
+    REFUND_FOR_ACTIVE_LOAN(18, "loanTransactionType.refund");*/
 
+	
+	
+	INVALID(0, "loanTransactionType.invalid", "INVALID"), //
+    DISBURSEMENT(1, "loanTransactionType.disbursement", "DISBURSEMENT"), //
+    REPAYMENT(2, "loanTransactionType.repayment", "REPAYMENT"), //
+    CONTRA(3, "loanTransactionType.contra", "CONTRA"), //
+    WAIVE_INTEREST(4, "loanTransactionType.waiver", "WAIVE_INTEREST"), //
+    REPAYMENT_AT_DISBURSEMENT(5, "loanTransactionType.repaymentAtDisbursement", "REPAYMENT_AT_DISBURSEMENT"), //
+    WRITEOFF(6, "loanTransactionType.writeOff", "WRITEOFF"), //
+    MARKED_FOR_RESCHEDULING(7, "loanTransactionType.marked.for.rescheduling", "MARKED_FOR_RESCHEDULING"), //
+    /**
+     * This type of transactions is allowed on written-off loans where mfi still
+     * attempts to recover payments from applicant after writing-off.
+     */
+    RECOVERY_REPAYMENT(8, "loanTransactionType.recoveryRepayment", "RECOVERY_REPAYMENT"), //
+    WAIVE_CHARGES(9, "loanTransactionType.waiveCharges", "WAIVE_CHARGES"), //
+    /**
+     * Transaction represents an Accrual (For either interest, charge or a
+     * penalty
+     **/
+    ACCRUAL(10, "loanTransactionType.accrual", "ACCRUAL"), //
+
+    /***
+     * A Loan Transfer involves two steps, first a "initiate" Loan transfer
+     * transaction done by the Source branch followed by a "complete" loan
+     * transaction initiated by the destination branch
+     **/
+    INITIATE_TRANSFER(12, "loanTransactionType.initiateTransfer", "INITIATE_TRANSFER"), //
+    APPROVE_TRANSFER(13, "loanTransactionType.approveTransfer", "APPROVE_TRANSFER"), //
+    WITHDRAW_TRANSFER(14, "loanTransactionType.withdrawTransfer", "WITHDRAW_TRANSFER"), //
+    REJECT_TRANSFER(15, "loanTransactionType.rejectTransfer", "REJECT_TRANSFER"), //
+    REFUND(16, "loanTransactionType.refund", "REFUND"), //
+    CHARGE_PAYMENT(17, "loanTransactionType.chargePayment", "CHARGE_PAYMENT"), //
+    INSURANCE_PREMIUM_PAYMENT(30, "loanTransactionType.insurancePremiumPayment", "INSURANCE_PREMIUM_PAYMENT"),//
+    ACCRUAL_SUSPENSE(31, "loanTransactionType.accrualSuspense", "ACCRUAL_SUSPENSE"),//
+    ACCRUAL_WRITEOFF(32, "loanTransactionType.accrualWriteOff", "ACCRUAL_WRITEOFF"),//
+    ACCRUAL_SUSPENSE_REVERSE(33, "loanTransactionType.accrualSuspenseReverse", "ACCRUAL_SUSPENSE_REVERSE"),//
+    REFUND_FOR_ACTIVE_LOAN(18, "loanTransactionType.refund","REFUND_FOR_ACTIVE_LOAN");
+	
+	
     private final Integer value;
     private final String code;
+    private final String label;
 
-    private LoanTransactionType(final Integer value, final String code) {
+    private LoanTransactionType(final Integer value, final String code,final String label) {
         this.value = value;
         this.code = code;
+        this.label=label;
     }
 
     public Integer getValue() {
@@ -146,6 +188,19 @@ public enum LoanTransactionType {
 
     public boolean isAccrual() {
         return this.value.equals(LoanTransactionType.ACCRUAL.getValue());
+    }
+    
+    
+    public boolean isAccrualSuspense() {
+        return this.value.equals(LoanTransactionType.ACCRUAL_SUSPENSE.getValue());
+    }
+
+    public boolean isAccrualWrittenOff() {
+        return this.value.equals(LoanTransactionType.ACCRUAL_WRITEOFF.getValue());
+    }
+    
+    public boolean isAccrualSuspenseReverse() {
+        return this.value.equals(LoanTransactionType.ACCRUAL_SUSPENSE_REVERSE.getValue());
     }
 
     public boolean isWriteOff() {

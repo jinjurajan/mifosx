@@ -41,6 +41,7 @@ import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargePaymentMode;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
 import org.mifosplatform.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
+import org.mifosplatform.portfolio.common.Utils;
 import org.mifosplatform.portfolio.loanaccount.command.LoanChargeCommand;
 import org.mifosplatform.portfolio.loanaccount.data.LoanChargePaidDetail;
 import org.springframework.data.jpa.domain.AbstractPersistable;
@@ -81,6 +82,10 @@ public class LoanCharge extends AbstractPersistable<Long> {
 
     @Column(name = "amount", scale = 6, precision = 19, nullable = false)
     private BigDecimal amount;
+    
+    
+    @Column(name = "amount_income_derived", scale = 6, precision = 19, nullable = false)
+    private BigDecimal incomeAmount;
 
     @Column(name = "amount_paid_derived", scale = 6, precision = 19, nullable = true)
     private BigDecimal amountPaid;
@@ -122,13 +127,14 @@ public class LoanCharge extends AbstractPersistable<Long> {
     @OneToOne(mappedBy = "loancharge", cascade = CascadeType.ALL, optional = true, orphanRemoval = true, fetch = FetchType.LAZY)
     private LoanTrancheDisbursementCharge loanTrancheDisbursementCharge;
 
-    public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command) {
+    public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command,
+    		final Map<String, BigDecimal> taxComponents) {
         final LocalDate dueDate = command.localDateValueOfParameterNamed("dueDate");
-        return createNewFromJson(loan, chargeDefinition, command, dueDate);
+        return createNewFromJson(loan, chargeDefinition, command, dueDate,taxComponents);
     }
 
     public static LoanCharge createNewFromJson(final Loan loan, final Charge chargeDefinition, final JsonCommand command,
-            final LocalDate dueDate) {
+            final LocalDate dueDate,final Map<String, BigDecimal> taxComponents) {
         final BigDecimal amount = command.bigDecimalValueOfParameterNamed("amount");
 
         final ChargeTimeType chargeTime = null;
@@ -173,7 +179,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
         }
 
         return new LoanCharge(loan, chargeDefinition, amountPercentageAppliedTo, amount, chargeTime, chargeCalculation, dueDate,
-                chargePaymentMode, null, loanCharge);
+                chargePaymentMode, null, loanCharge,taxComponents);
     }
 
     /*
@@ -181,9 +187,9 @@ public class LoanCharge extends AbstractPersistable<Long> {
      */
     public static LoanCharge createNewWithoutLoan(final Charge chargeDefinition, final BigDecimal loanPrincipal, final BigDecimal amount,
             final ChargeTimeType chargeTime, final ChargeCalculationType chargeCalculation, final LocalDate dueDate,
-            final ChargePaymentMode chargePaymentMode, final Integer numberOfRepayments) {
+            final ChargePaymentMode chargePaymentMode, final Integer numberOfRepayments,final Map<String, BigDecimal> taxComponents) {
         return new LoanCharge(null, chargeDefinition, loanPrincipal, amount, chargeTime, chargeCalculation, dueDate, chargePaymentMode,
-                numberOfRepayments, BigDecimal.ZERO);
+                numberOfRepayments, BigDecimal.ZERO,taxComponents);
     }
 
     protected LoanCharge() {
@@ -192,7 +198,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
 
     public LoanCharge(final Loan loan, final Charge chargeDefinition, final BigDecimal loanPrincipal, final BigDecimal amount,
             final ChargeTimeType chargeTime, final ChargeCalculationType chargeCalculation, final LocalDate dueDate,
-            final ChargePaymentMode chargePaymentMode, final Integer numberOfRepayments, final BigDecimal loanCharge) {
+            final ChargePaymentMode chargePaymentMode, final Integer numberOfRepayments, final BigDecimal loanCharge, final Map<String, BigDecimal> taxComponents) {
         this.loan = loan;
         this.charge = chargeDefinition;
         this.penaltyCharge = chargeDefinition.isPenalty();
@@ -232,12 +238,12 @@ public class LoanCharge extends AbstractPersistable<Long> {
         if (chargePaymentMode != null) {
             this.chargePaymentMode = chargePaymentMode.getValue();
         }
-        populateDerivedFields(loanPrincipal, chargeAmount, numberOfRepayments, loanCharge);
+        populateDerivedFields(loanPrincipal, chargeAmount, numberOfRepayments, loanCharge,taxComponents);
         this.paid = determineIfFullyPaid();
     }
 
     private void populateDerivedFields(final BigDecimal amountPercentageAppliedTo, final BigDecimal chargeAmount,
-            Integer numberOfRepayments, BigDecimal loanCharge) {
+            Integer numberOfRepayments, BigDecimal loanCharge,final Map<String, BigDecimal> taxComponents) {
 
         switch (ChargeCalculationType.fromInt(this.chargeCalculation)) {
             case INVALID:
@@ -283,10 +289,23 @@ public class LoanCharge extends AbstractPersistable<Long> {
         }
         this.amountOrPercentage = chargeAmount;
         if (this.loan != null && isInstalmentFee()) {
-            updateInstallmentCharges();
+            updateInstallmentCharges(taxComponents);
         }
     }
 
+    
+    private void calculateActualIncome(final Map<String, BigDecimal> taxComponents) {
+        if (this.amount != null && isGovernmentChargeApplicable()) {
+            this.incomeAmount = Utils.splitCharge(this.amount, taxComponents).get(Utils.ACTUAL_CHARGE);
+        } else {
+            this.incomeAmount = this.amount;
+        }
+    }
+    
+    public boolean isGovernmentChargeApplicable() {
+        return this.charge != null && this.charge.isGovernmentChargeApplicable();
+    }
+    
     public void markAsFullyPaid() {
         this.amountPaid = this.amount;
         this.amountOutstanding = BigDecimal.ZERO;
@@ -317,6 +336,15 @@ public class LoanCharge extends AbstractPersistable<Long> {
             installmentCharge.resetPaidAmount(currency);
         }
     }
+    
+    public void resetWrittenOffAmount(final MonetaryCurrency currency) {
+        this.amountWrittenOff = null;
+        this.amountOutstanding = calculateAmountOutstanding(currency);
+        for (final LoanInstallmentCharge installmentCharge : this.loanInstallmentCharge) {
+            installmentCharge.resetPaidAmount(currency);
+        }
+    }
+
 
     public Money waive(final MonetaryCurrency currency, final Integer loanInstallmentNumber) {
         if (isInstalmentFee()) {
@@ -344,6 +372,44 @@ public class LoanCharge extends AbstractPersistable<Long> {
     public BigDecimal getAmountPercentageAppliedTo() {
         return this.amountPercentageAppliedTo;
     }
+    
+    
+    public Money writtenOff(final MonetaryCurrency currency, final Integer loanInstallmentNumber) {
+        if (isInstalmentFee()) {
+            final LoanInstallmentCharge chargePerInstallment = getInstallmentLoanCharge(loanInstallmentNumber);
+            final Money amountWrittenOff = chargePerInstallment.writtenOff(currency);
+            if (this.amountWrittenOff == null) {
+                this.amountWrittenOff = BigDecimal.ZERO;
+            }
+            this.amountWrittenOff = this.amountWrittenOff.add(amountWrittenOff.getAmount());
+            this.amountOutstanding = this.amountOutstanding.subtract(amountWrittenOff.getAmount());
+            if (determineIfFullyPaid()) {
+                this.paid = false;
+                this.waived = true;
+            }
+            return amountWrittenOff;
+        }
+        this.amountWrittenOff = this.amountOutstanding;
+        this.amountOutstanding = BigDecimal.ZERO;
+        this.paid = false;
+        this.waived = true;
+        return getAmountWrittenOff(currency);
+    }
+    
+    public void writtenOff(final MonetaryCurrency currency) {
+        if (isInstalmentFee()) {
+            for (final LoanInstallmentCharge loanChargePerInstallment : this.loanInstallmentCharge) {
+                if (loanChargePerInstallment.getAmountOutstanding(currency).isGreaterThanZero()) {
+                    loanChargePerInstallment.writtenOff(currency);
+                }
+            }
+        }
+        this.amountWrittenOff = this.amountWrittenOff == null ? this.amountOutstanding : this.amountWrittenOff.add(this.amountOutstanding);
+        this.amountOutstanding = BigDecimal.ZERO;
+        this.paid = false;
+        this.waived = true;
+    }
+    
 
     private BigDecimal calculateAmountOutstanding(final MonetaryCurrency currency) {
         return getAmount(currency).minus(getAmountWaived(currency)).minus(getAmountPaid(currency)).getAmount();
@@ -353,7 +419,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
         this.loan = loan;
     }
 
-    public void update(final BigDecimal amount, final LocalDate dueDate, final BigDecimal loanPrincipal, Integer numberOfRepayments,
+/*    public void update(final BigDecimal amount, final LocalDate dueDate, final BigDecimal loanPrincipal, Integer numberOfRepayments,
             BigDecimal loanCharge) {
         if (dueDate != null) {
             this.dueDate = dueDate.toDate();
@@ -391,9 +457,52 @@ public class LoanCharge extends AbstractPersistable<Long> {
                 updateInstallmentCharges();
             }
         }
+    }*/
+    
+    
+    public void update(final BigDecimal amount, final LocalDate dueDate, final BigDecimal loanPrincipal, Integer numberOfRepayments,
+            BigDecimal loanCharge, final Map<String, BigDecimal> taxComponents) {
+        if (dueDate != null) {
+            this.dueDate = dueDate.toDate();
+        }
+
+        if (amount != null) {
+            switch (ChargeCalculationType.fromInt(this.chargeCalculation)) {
+                case INVALID:
+                break;
+                case FLAT:
+                    if (isInstalmentFee()) {
+                        if (numberOfRepayments == null) {
+                            numberOfRepayments = this.loan.repaymentScheduleDetail().getNumberOfRepayments();
+                        }
+                        this.amount = amount.multiply(BigDecimal.valueOf(numberOfRepayments));
+                    } else {
+                        this.amount = amount;
+                    }
+                break;
+                case PERCENT_OF_AMOUNT:
+                case PERCENT_OF_AMOUNT_AND_INTEREST:
+                case PERCENT_OF_INTEREST:
+                    this.percentage = amount;
+                    this.amountPercentageAppliedTo = loanPrincipal;
+                    if (loanCharge.compareTo(BigDecimal.ZERO) == 0) {
+                        loanCharge = percentageOf(this.amountPercentageAppliedTo);
+                    }
+                    this.amount = minimumAndMaximumCap(loanCharge);
+                break;
+            }
+            this.amountOrPercentage = amount;
+            this.amountOutstanding = calculateOutstanding();
+            if (this.loan != null && isInstalmentFee()) {
+                updateInstallmentCharges(taxComponents);
+            }
+            calculateActualIncome(taxComponents);
+        }
     }
 
-    public void update(final BigDecimal amount, final LocalDate dueDate, final Integer numberOfRepayments) {
+    
+
+    public void update(final BigDecimal amount, final LocalDate dueDate, final Integer numberOfRepayments, final Map<String, BigDecimal> taxComponents) {
         BigDecimal amountPercentageAppliedTo = BigDecimal.ZERO;
         if (this.loan != null) {
             switch (ChargeCalculationType.fromInt(this.chargeCalculation)) {
@@ -414,10 +523,10 @@ public class LoanCharge extends AbstractPersistable<Long> {
                 break;
             }
         }
-        update(amount, dueDate, amountPercentageAppliedTo, numberOfRepayments, BigDecimal.ZERO);
+        update(amount, dueDate, amountPercentageAppliedTo, numberOfRepayments, BigDecimal.ZERO,taxComponents);
     }
 
-    public Map<String, Object> update(final JsonCommand command, final BigDecimal amount) {
+    public Map<String, Object> update(final JsonCommand command, final BigDecimal amount,final Map<String, BigDecimal> taxComponents) {
 
         final Map<String, Object> actualChanges = new LinkedHashMap<>(7);
 
@@ -472,13 +581,13 @@ public class LoanCharge extends AbstractPersistable<Long> {
             }
             this.amountOrPercentage = newValue;
             if (isInstalmentFee()) {
-                updateInstallmentCharges();
+                updateInstallmentCharges(taxComponents);
             }
         }
         return actualChanges;
     }
 
-    private void updateInstallmentCharges() {
+    /*private void updateInstallmentCharges() {
         final Collection<LoanInstallmentCharge> remove = new HashSet<>();
         final Set<LoanInstallmentCharge> chargePerInstallments = this.loan.generateInstallmentLoanCharges(this);
         if (this.loanInstallmentCharge.isEmpty()) {
@@ -501,7 +610,33 @@ public class LoanCharge extends AbstractPersistable<Long> {
             }
         }
     }
+*/
+    
+    private void updateInstallmentCharges(final Map<String, BigDecimal> taxComponents) {
+        final Collection<LoanInstallmentCharge> remove = new HashSet<>();
+        final Set<LoanInstallmentCharge> chargePerInstallments = this.loan.generateInstallmentLoanCharges(this, taxComponents);
+        if (this.loanInstallmentCharge.isEmpty()) {
+            this.loanInstallmentCharge.addAll(chargePerInstallments);
+        } else {
+            int index = 0;
+            final LoanInstallmentCharge[] loanChargePerInstallments = new LoanInstallmentCharge[chargePerInstallments.size()];
+            final LoanInstallmentCharge[] loanChargePerInstallmentArray = chargePerInstallments.toArray(loanChargePerInstallments);
+            for (final LoanInstallmentCharge chargePerInstallment : this.loanInstallmentCharge) {
+                if (index == loanChargePerInstallmentArray.length) {
+                    remove.add(chargePerInstallment);
+                    chargePerInstallment.updateInstallment(null);
+                } else {
+                    chargePerInstallment.copyFrom(loanChargePerInstallmentArray[index++]);
+                }
+            }
+            this.loanInstallmentCharge.removeAll(remove);
+            while (index < loanChargePerInstallmentArray.length - 1) {
+                this.loanInstallmentCharge.add(loanChargePerInstallmentArray[index++]);
+            }
+        }
+    }
 
+    
     public boolean isDueAtDisbursement() {
         return ChargeTimeType.fromInt(this.chargeTime).equals(ChargeTimeType.DISBURSEMENT)
                 || ChargeTimeType.fromInt(this.chargeTime).equals(ChargeTimeType.TRANCHE_DISBURSEMENT);
@@ -683,6 +818,17 @@ public class LoanCharge extends AbstractPersistable<Long> {
     public Money getAmountWrittenOff(final MonetaryCurrency currency) {
         return Money.of(currency, this.amountWrittenOff);
     }
+    
+    public Money getAmountOutstanding(final MonetaryCurrency currency) {
+        return Money.of(currency, this.amountOutstanding);
+    }
+
+    
+    public Money getAmountOutstanding(final MonetaryCurrency currency, final Integer installmentNumber) {
+        if (isInstalmentFee() && installmentNumber != null) { return getInstallmentLoanCharge(installmentNumber).getAmountOutstanding(
+                currency); }
+        return Money.of(currency, this.amountOutstanding);
+    }
 
     /**
      * @param feeAmount
@@ -727,6 +873,40 @@ public class LoanCharge extends AbstractPersistable<Long> {
         return amountPaidOnThisCharge;
     }
 
+    
+    
+    public Money updateWrittenOffPaidAmountBy(final Money incrementBy) {
+        Money processAmount = Money.zero(incrementBy.getCurrency());
+        if (isInstalmentFee()) {
+            processAmount = getWrittenOffInstallmentLoanCharge(incrementBy.getCurrency()).updateWrittenOffPaidAmountBy(incrementBy);
+        } else {
+            processAmount = incrementBy;
+        }
+        Money amountPaidToDate = Money.of(processAmount.getCurrency(), this.amountPaid);
+        Money amountOutstanding = Money.of(processAmount.getCurrency(), this.amountWrittenOff);
+        Money amountPaidOnThisCharge = Money.zero(processAmount.getCurrency());
+        if (processAmount.isGreaterThanOrEqualTo(amountOutstanding)) {
+            amountPaidOnThisCharge = amountOutstanding;
+            amountPaidToDate = amountPaidToDate.plus(amountOutstanding);
+            this.amountPaid = amountPaidToDate.getAmount();
+            this.amountWrittenOff = BigDecimal.ZERO;
+            Money waivedAmount = getAmountWaived(processAmount.getCurrency()).plus(getAmountWrittenOff(processAmount.getCurrency()));
+            if (waivedAmount.isGreaterThanZero()) {
+                this.waived = true;
+            } else {
+                this.paid = true;
+            }
+        } else {
+            amountPaidOnThisCharge = processAmount;
+            amountPaidToDate = amountPaidToDate.plus(processAmount);
+            this.amountPaid = amountPaidToDate.getAmount();
+            amountOutstanding = amountOutstanding.minus(amountPaidOnThisCharge);
+            this.amountWrittenOff = amountOutstanding.getAmount();
+        }
+        return amountPaidOnThisCharge;
+    }
+
+    
     public String name() {
         return this.charge.getName();
     }
@@ -792,6 +972,19 @@ public class LoanCharge extends AbstractPersistable<Long> {
         return unpaidChargePerInstallment;
     }
 
+    
+    public LoanInstallmentCharge getWrittenOffInstallmentLoanCharge(final MonetaryCurrency currency) {
+        LoanInstallmentCharge unpaidChargePerInstallment = null;
+        for (final LoanInstallmentCharge loanChargePerInstallment : this.loanInstallmentCharge) {
+            if (loanChargePerInstallment.getAmountWrittenOff(currency).isGreaterThanZero()
+                    && (unpaidChargePerInstallment == null || unpaidChargePerInstallment.getRepaymentInstallment().getDueDate()
+                            .isAfter(loanChargePerInstallment.getRepaymentInstallment().getDueDate()))) {
+                unpaidChargePerInstallment = loanChargePerInstallment;
+            }
+        }
+        return unpaidChargePerInstallment;
+    }
+    
     public LoanInstallmentCharge getInstallmentLoanCharge(final LocalDate periodDueDate) {
         for (final LoanInstallmentCharge loanChargePerInstallment : this.loanInstallmentCharge) {
             if (periodDueDate.isEqual(loanChargePerInstallment.getRepaymentInstallment().getDueDate())) { return loanChargePerInstallment; }

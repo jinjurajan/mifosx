@@ -10,9 +10,11 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.serialization.FromJsonHelper;
 import org.mifosplatform.portfolio.charge.domain.Charge;
 import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
@@ -42,14 +44,17 @@ public class LoanChargeAssembler {
     private final ChargeRepositoryWrapper chargeRepository;
     private final LoanChargeRepository loanChargeRepository;
     private final LoanProductRepository loanProductRepository;
+    private final ConfigurationDomainService configurationDomainService;
 
     @Autowired
     public LoanChargeAssembler(final FromJsonHelper fromApiJsonHelper, final ChargeRepositoryWrapper chargeRepository,
-            final LoanChargeRepository loanChargeRepository, final LoanProductRepository loanProductRepository) {
+            final LoanChargeRepository loanChargeRepository, final LoanProductRepository loanProductRepository,
+            final ConfigurationDomainService configurationDomainService) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.chargeRepository = chargeRepository;
         this.loanChargeRepository = loanChargeRepository;
         this.loanProductRepository = loanProductRepository;
+        this.configurationDomainService=configurationDomainService;
     }
 
     public Set<LoanCharge> fromParsedJson(final JsonElement element, Set<LoanDisbursementDetails> disbursementDetails) {
@@ -90,6 +95,7 @@ public class LoanChargeAssembler {
             final String dateFormat = this.fromApiJsonHelper.extractDateFormatParameter(topLevelJsonElement);
             final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(topLevelJsonElement);
             if (topLevelJsonElement.has("charges") && topLevelJsonElement.get("charges").isJsonArray()) {
+                final Map<String, BigDecimal> taxComponents = this.configurationDomainService.retriveTaxComponents();
                 final JsonArray array = topLevelJsonElement.get("charges").getAsJsonArray();
                 for (int i = 0; i < array.size(); i++) {
 
@@ -129,7 +135,7 @@ public class LoanChargeAssembler {
                         }
                         if (!isMultiDisbursal) {
                             final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, amount, chargeTime,
-                                    chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments);
+                                    chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments,taxComponents);
                             loanCharges.add(loanCharge);
                         } else {
                             if (topLevelJsonElement.has("disbursementData") && topLevelJsonElement.get("disbursementData").isJsonArray()) {
@@ -147,7 +153,7 @@ public class LoanChargeAssembler {
                                     if (chargeDefinition.isPercentageOfApprovedAmount()
                                             && disbursementDetail.expectedDisbursementDateAsLocalDate().equals(expectedDisbursementDate)) {
                                         final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, amount,
-                                                chargeTime, chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments);
+                                                chargeTime, chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments,taxComponents);
                                         loanCharges.add(loanCharge);
                                         loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge, disbursementDetail);
                                         loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
@@ -156,7 +162,7 @@ public class LoanChargeAssembler {
                                             final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition,
                                                     disbursementDetail.principal(), amount, chargeTime, chargeCalculation,
                                                     disbursementDetail.expectedDisbursementDateAsLocalDate(), chargePaymentModeEnum,
-                                                    numberOfRepayments);
+                                                    numberOfRepayments,taxComponents);
                                             loanCharges.add(loanCharge);
                                             loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,
                                                     disbursementDetail);
@@ -171,7 +177,7 @@ public class LoanChargeAssembler {
                                         final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition,
                                                 disbursementDetail.principal(), amount, chargeTime, chargeCalculation,
                                                 disbursementDetail.expectedDisbursementDateAsLocalDate(), chargePaymentModeEnum,
-                                                numberOfRepayments);
+                                                numberOfRepayments,taxComponents);
                                         loanCharges.add(loanCharge);
                                         loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge, disbursementDetail);
                                         loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
@@ -179,7 +185,7 @@ public class LoanChargeAssembler {
                                 }
                             } else {
                                 final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, amount,
-                                        chargeTime, chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments);
+                                        chargeTime, chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments,taxComponents);
                                 loanCharges.add(loanCharge);
                             }
                         }

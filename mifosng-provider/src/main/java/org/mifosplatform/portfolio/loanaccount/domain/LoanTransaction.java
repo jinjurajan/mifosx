@@ -66,6 +66,10 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     @Column(name = "transaction_type_enum", nullable = false)
     private final Integer typeOf;
 
+    /*@Column(name = "sub_txn_type_enum", nullable = true)
+    private final Integer subTxnType;*/
+    
+    
     @Temporal(TemporalType.DATE)
     @Column(name = "transaction_date", nullable = false)
     private final Date dateOf;
@@ -119,6 +123,17 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     @Column(name = "manually_adjusted_or_reversed", nullable = false)
     private boolean manuallyAdjustedOrReversed;
 
+    @Column(name = "advancepayment_portion_derived", scale = 6, precision = 19, nullable = true)
+    private BigDecimal advancePaymentPortion;
+    
+    @Column(name = "exclude_fee_charges", nullable = false)
+    private boolean excludeFeeCharges;
+    
+    @Column(name = "exclude_penalty_charges", nullable = false)
+    private boolean excludePenaltyCharges;
+    
+  
+    
     @LazyCollection(LazyCollectionOption.FALSE)
     @OneToMany(cascade = CascadeType.ALL,  orphanRemoval = true)
     @JoinColumn(name = "loan_transaction_id", referencedColumnName= "id" , nullable = false)
@@ -132,7 +147,16 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.createdDate = new Date();
         this.appUser = null;
     }
-
+   /* protected LoanTransaction() {
+        this.loan = null;
+        this.dateOf = null;
+        this.typeOf = null;
+        this.subTxnType = null;
+        this.createdDate = DateUtils.getDateOfTenant();
+        this.submittedOnDate = DateUtils.getDateOfTenant();
+        this.appUser = null;
+    }
+*/
     public static LoanTransaction disbursement(final Office office, final Money amount, final PaymentDetail paymentDetail,
             final LocalDate disbursementDate, final String externalId, final LocalDateTime createdDate, final AppUser appUser) {
         return new LoanTransaction(null, office, LoanTransactionType.DISBURSEMENT, paymentDetail, amount.getAmount(), disbursementDate,
@@ -172,7 +196,7 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         return loanTransaction;
     }
 
-    public static LoanTransaction accrueInterest(final Office office, final Loan loan, final Money amount,
+   public static LoanTransaction accrueInterest(final Office office, final Loan loan, final Money amount,
             final LocalDate interestAppliedDate, final LocalDateTime createdDate, final AppUser appUser) {
         BigDecimal principalPortion = null;
         BigDecimal feesPortion = null;
@@ -186,6 +210,60 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
                 principalPortion, interestPortion, feesPortion, penaltiesPortion, overPaymentPortion, reversed, paymentDetail, externalId,
                 createdDate, appUser);
     }
+    
+    
+    /*private LoanTransaction(final Loan loan, final Office office, final Integer typeOf, final Date dateOf, final BigDecimal amount,
+            final BigDecimal principalPortion, final BigDecimal interestPortion, final BigDecimal feeChargesPortion,
+            final BigDecimal penaltyChargesPortion, final BigDecimal overPaymentPortion, final BigDecimal advancePaymentPortion,
+            final boolean reversed, final PaymentDetail paymentDetail, final String externalId, final Integer subTxnType,
+            final LocalDateTime createdDate, boolean excludeFeeCharges, boolean excludePenaltyCharges) {
+        super();
+        this.loan = loan;
+        this.typeOf = typeOf;
+       // this.subTxnType = subTxnType;
+        this.dateOf = dateOf;
+        this.amount = amount;
+        this.principalPortion = principalPortion;
+        this.interestPortion = interestPortion;
+        this.feeChargesPortion = feeChargesPortion;
+        this.penaltyChargesPortion = penaltyChargesPortion;
+        this.overPaymentPortion = overPaymentPortion;
+        this.advancePaymentPortion = advancePaymentPortion;
+        this.reversed = reversed;
+        this.paymentDetail = paymentDetail;
+        this.office = office;
+        this.externalId = externalId;
+        this.submittedOnDate = DateUtils.getDateOfTenant();
+        this.createdDate = createdDate.toDate();
+        this.excludeFeeCharges = excludeFeeCharges;
+        this.excludePenaltyCharges = excludePenaltyCharges;
+    }*/
+    
+    public static LoanTransaction accrueInterest(final Office office, final Loan loan, final Money amount,
+            final LocalDate interestAppliedDate) {
+        BigDecimal principalPortion = null;
+        BigDecimal feesPortion = null;
+        BigDecimal penaltiesPortion = null;
+        BigDecimal interestPortion = amount.getAmount();
+        BigDecimal overPaymentPortion = null;
+        final BigDecimal advancePaymentPortion = null;
+        boolean reversed = false;
+        PaymentDetail paymentDetail = null;
+        String externalId = null;
+        final Integer subTxnType = null;
+        final boolean excludeFeeCharges = false;
+        final boolean excludePenaltyCharges = false;
+        final AppUser appUser=null;
+        return new LoanTransaction(loan, office, LoanTransactionType.ACCRUAL.getValue(), interestAppliedDate.toDate(), interestPortion,
+                principalPortion, interestPortion, feesPortion, penaltiesPortion, overPaymentPortion, /*advancePaymentPortion*/ reversed,
+                paymentDetail, externalId, /*subTxnType,*/ DateUtils.getLocalDateTimeOfTenant(), /*excludeFeeCharges, excludePenaltyCharges*/ appUser);
+        
+       /* private LoanTransaction(final Loan loan, final Office office, final Integer typeOf, final Date dateOf, final BigDecimal amount,
+                final BigDecimal principalPortion, final BigDecimal interestPortion, final BigDecimal feeChargesPortion,
+                final BigDecimal penaltyChargesPortion, final BigDecimal overPaymentPortion, final boolean reversed,
+                final PaymentDetail paymentDetail, final String externalId, final LocalDateTime createdDate, final AppUser appUser)*/
+    }
+    
 
     public static LoanTransaction initiateTransfer(final Office office, final Loan loan, final LocalDate transferDate,
             final LocalDateTime createdDate, final AppUser appUser) {
@@ -250,7 +328,37 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
                 && loanTransaction.getOverPaymentPortion(currency).isEqualTo(newLoanTransaction.getOverPaymentPortion(currency))) { return true; }
         return false;
     }
+    
+    
+    /*return new LoanTransaction(loan, office, LoanTransactionType.ACCRUAL.getValue(), interestAppliedDate.toDate(), interestPortion,
+            principalPortion, interestPortion, feesPortion, penaltiesPortion, overPaymentPortion, advancePaymentPortion, reversed,
+            paymentDetail, externalId, subTxnType, DateUtils.getLocalDateTimeOfTenant(), excludeFeeCharges, excludePenaltyCharges);*/
 
+   /* private LoanTransaction(final Loan loan, final Office office, final Integer typeOf, final Date dateOf, final BigDecimal amount,
+            final BigDecimal principalPortion, final BigDecimal interestPortion, final BigDecimal feeChargesPortion,
+            final BigDecimal penaltyChargesPortion, final BigDecimal overPaymentPortion, final boolean reversed,
+            final PaymentDetail paymentDetail, final String externalId, final LocalDateTime createdDate, final BigDecimal ex) {
+        super();
+        this.loan = loan;
+        this.typeOf = typeOf;
+        this.dateOf = dateOf;
+        this.amount = amount;
+        this.principalPortion = principalPortion;
+        this.interestPortion = interestPortion;
+        this.feeChargesPortion = feeChargesPortion;
+        this.penaltyChargesPortion = penaltyChargesPortion;
+        this.overPaymentPortion = overPaymentPortion;
+        this.reversed = reversed;
+        this.paymentDetail = paymentDetail;
+        this.office = office;
+        this.externalId = externalId;
+        this.submittedOnDate = DateUtils.getDateOfTenant();
+        this.createdDate = createdDate.toDate();
+        this.appUser = appUser;
+    }
+    */
+    
+    
     private LoanTransaction(final Loan loan, final Office office, final Integer typeOf, final Date dateOf, final BigDecimal amount,
             final BigDecimal principalPortion, final BigDecimal interestPortion, final BigDecimal feeChargesPortion,
             final BigDecimal penaltyChargesPortion, final BigDecimal overPaymentPortion, final boolean reversed,
@@ -273,6 +381,8 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.createdDate = createdDate.toDate();
         this.appUser = appUser;
     }
+    
+    
 
     public static LoanTransaction waiveLoanCharge(final Loan loan, final Office office, final Money waived, final LocalDate waiveDate,
             final Money feeChargesWaived, final Money penaltyChargesWaived, final Money unrecognizedCharge,
@@ -321,13 +431,25 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.loanTransactionToRepaymentScheduleMappings.clear();
     }
 
-    public void resetDerivedComponents() {
+   /* public void resetDerivedComponents() {
         this.principalPortion = null;
         this.interestPortion = null;
         this.feeChargesPortion = null;
         this.penaltyChargesPortion = null;
         this.overPaymentPortion = null;
         this.outstandingLoanBalance = null;
+    }
+*/
+    public void resetDerivedComponents(boolean resetUnrecignizedPortion) {
+        this.principalPortion = null;
+        this.interestPortion = null;
+        this.feeChargesPortion = null;
+        this.penaltyChargesPortion = null;
+        this.overPaymentPortion = null;
+        this.outstandingLoanBalance = null;
+        if (resetUnrecignizedPortion) {
+            this.unrecognizedIncomePortion = null;
+        }
     }
 
     public void updateLoan(final Loan loan) {
@@ -360,6 +482,13 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.penaltyChargesPortion = defaultToNullIfZero(getPenaltyChargesPortion(currency).plus(penaltyCharges).getAmount());
         this.unrecognizedIncomePortion = defaultToNullIfZero(getUnrecognizedIncomePortion(currency).plus(unrecognizedCharges).getAmount());
     }
+    
+    
+    private void updateUnrecognizedIncomePortion(final Money unrecognizedInterest) {
+        this.unrecognizedIncomePortion = defaultToNullIfZero(getUnrecognizedIncomePortion(unrecognizedInterest.getCurrency()).plus(
+                unrecognizedInterest).getAmount());
+    }
+    
 
     private void updateInterestComponent(final Money interest, final Money unrecognizedInterest) {
         final MonetaryCurrency currency = interest.getCurrency();
@@ -371,14 +500,45 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
         this.interestPortion = defaultToNullIfZero(getInterestPortion(currency).minus(getUnrecognizedIncomePortion(currency)).getAmount());
     }
 
-    public void updateComponentsAndTotal(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges) {
+    /*public void updateComponentsAndTotal(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges) {
         updateComponents(principal, interest, feeCharges, penaltyCharges);
 
         final MonetaryCurrency currency = principal.getCurrency();
         this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
                 .plus(getPenaltyChargesPortion(currency)).getAmount();
+    }*/
+    
+    
+    
+  /*  public void updateComponentsAndTotal(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges,
+            final Money unrecognizedInterest) {
+        updateComponents(principal, interest, feeCharges, penaltyCharges);
+        updateUnrecognizedIncomePortion(unrecognizedInterest);
+        final MonetaryCurrency currency = principal.getCurrency();
+        this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
+                .plus(getPenaltyChargesPortion(currency)).plus(getUnrecognizedIncomePortion(currency)).getAmount();
     }
+*/
+    
+    public void updateComponentsAndTotal(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges) {
+        updateComponents(principal, interest, feeCharges, penaltyCharges);
 
+        final MonetaryCurrency currency = principal.getCurrency();
+        this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
+                .plus(getPenaltyChargesPortion(currency)).plus(getUnrecognizedIncomePortion(currency)).getAmount();
+    }
+    
+    
+    public void updateComponentsAndTotal(final Money principal, final Money interest, final Money feeCharges, final Money penaltyCharges,
+            final Money unrecognizedInterest) {
+        updateComponents(principal, interest, feeCharges, penaltyCharges);
+        updateUnrecognizedIncomePortion(unrecognizedInterest);
+        final MonetaryCurrency currency = principal.getCurrency();
+        this.amount = getPrincipalPortion(currency).plus(getInterestPortion(currency)).plus(getFeeChargesPortion(currency))
+                .plus(getPenaltyChargesPortion(currency)).plus(getUnrecognizedIncomePortion(currency)).getAmount();
+    }
+    
+    
     public void updateOverPayments(final Money overPayment) {
         final MonetaryCurrency currency = overPayment.getCurrency();
         this.overPaymentPortion = defaultToNullIfZero(getOverPaymentPortion(currency).plus(overPayment).getAmount());
@@ -605,7 +765,8 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     public String getExternalId() {
         return this.externalId;
     }
-
+    
+    
     public boolean isRefund() {
         return LoanTransactionType.REFUND.equals(getTypeOf()) && isNotReversed();
     }
@@ -613,9 +774,26 @@ public final class LoanTransaction extends AbstractPersistable<Long> {
     public void updateExternalId(final String externalId) {
         this.externalId = externalId;
     }
+    
+    public boolean isAccrualTransaction() {
+        return isAccrual() || isAccrualSuspense() || isAccrualWrittenOff() || isAccrualSuspenseReverse();
+    }
 
     public boolean isAccrual() {
         return LoanTransactionType.ACCRUAL.equals(getTypeOf()) && isNotReversed();
+    }
+    
+    
+    public boolean isAccrualSuspense() {
+        return getTypeOf().isAccrualSuspense() && isNotReversed();
+    }
+
+    public boolean isAccrualWrittenOff() {
+        return getTypeOf().isAccrualWrittenOff() && isNotReversed();
+    }
+
+    public boolean isAccrualSuspenseReverse() {
+        return getTypeOf().isAccrualSuspenseReverse() && isNotReversed();
     }
     
     public boolean isNonMonetaryTransaction(){

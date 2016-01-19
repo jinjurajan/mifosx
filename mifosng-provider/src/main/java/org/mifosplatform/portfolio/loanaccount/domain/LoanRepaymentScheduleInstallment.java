@@ -81,6 +81,11 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
     @Column(name = "accrual_fee_charges_derived", scale = 6, precision = 19, nullable = true)
     private BigDecimal feeAccrued;
 
+    @Column(name = "income_fee_charges_derived", scale = 6, precision = 19, nullable = true)
+    private BigDecimal feeChargesIncome;
+    
+    
+    
     @Column(name = "penalty_charges_amount", scale = 6, precision = 19, nullable = true)
     private BigDecimal penaltyCharges;
 
@@ -96,6 +101,11 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
     @Column(name = "accrual_penalty_charges_derived", scale = 6, precision = 19, nullable = true)
     private BigDecimal penaltyAccrued;
 
+    @Column(name = "income_penalty_charges_derived", scale = 6, precision = 19, nullable = true)
+    private BigDecimal penaltyChargesIncome;
+
+    
+    
     @Column(name = "total_paid_in_advance_derived", scale = 6, precision = 19, nullable = true)
     private BigDecimal totalPaidInAdvance;
 
@@ -130,6 +140,25 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
         this.interestCharged = defaultToNullIfZero(interest);
         this.feeChargesCharged = defaultToNullIfZero(feeCharges);
         this.penaltyCharges = defaultToNullIfZero(penaltyCharges);
+        this.obligationsMet = false;
+        this.recalculatedInterestComponent = recalculatedInterestComponent;
+    }
+    
+    
+    public LoanRepaymentScheduleInstallment(final Loan loan, final Integer installmentNumber, final LocalDate fromDate,
+            final LocalDate dueDate, final BigDecimal principal, final BigDecimal interest, final BigDecimal feeCharges,
+            final BigDecimal feeChargesIncome, final BigDecimal penaltyCharges, final BigDecimal penaltyChargesIncome,
+            final boolean recalculatedInterestComponent) {
+        this.loan = loan;
+        this.installmentNumber = installmentNumber;
+        this.fromDate = fromDate.toDateTimeAtStartOfDay().toDate();
+        this.dueDate = dueDate.toDateTimeAtStartOfDay().toDate();
+        this.principal = defaultToNullIfZero(principal);
+        this.interestCharged = defaultToNullIfZero(interest);
+        this.feeChargesCharged = defaultToNullIfZero(feeCharges);
+        this.penaltyCharges = defaultToNullIfZero(penaltyCharges);
+        this.feeChargesIncome = defaultToNullIfZero(feeChargesIncome);
+        this.penaltyChargesIncome = defaultToNullIfZero(penaltyChargesIncome);
         this.obligationsMet = false;
         this.recalculatedInterestComponent = recalculatedInterestComponent;
     }
@@ -522,6 +551,20 @@ public final class LoanRepaymentScheduleInstallment extends AbstractAuditableCus
         this.penaltyCharges = defaultToNullIfZero(penaltyChargesDue.getAmount());
         this.penaltyChargesWaived = defaultToNullIfZero(penaltyChargesWaived.getAmount());
         this.penaltyChargesWrittenOff = defaultToNullIfZero(penaltyChargesWrittenOff.getAmount());
+    }
+    
+    
+    public void updateChargePortion(final BigDecimal feeChargesDue, final Money feeChargesWaived, final Money feeChargesWrittenOff,
+            final BigDecimal feeChargesIncome, final BigDecimal penaltyChargesDue, final Money penaltyChargesWaived,
+            final Money penaltyChargesWrittenOff, final BigDecimal penaltyChargesIncome) {
+        this.feeChargesCharged = defaultToNullIfZero(feeChargesDue);
+        this.feeChargesWaived = defaultToNullIfZero(feeChargesWaived.getAmount());
+        this.feeChargesWrittenOff = defaultToNullIfZero(feeChargesWrittenOff.getAmount());
+        this.penaltyCharges = defaultToNullIfZero(penaltyChargesDue);
+        this.penaltyChargesWaived = defaultToNullIfZero(penaltyChargesWaived.getAmount());
+        this.penaltyChargesWrittenOff = defaultToNullIfZero(penaltyChargesWrittenOff.getAmount());
+        this.feeChargesIncome = defaultToNullIfZero(feeChargesIncome);
+        this.penaltyChargesIncome = defaultToNullIfZero(penaltyChargesIncome);
     }
 
     public void updateAccrualPortion(final Money interest, final Money feeCharges, final Money penalityCharges) {

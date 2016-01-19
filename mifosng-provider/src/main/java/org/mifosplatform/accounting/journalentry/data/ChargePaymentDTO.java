@@ -12,11 +12,13 @@ public class ChargePaymentDTO {
     private final Long chargeId;
     private final BigDecimal amount;
     private final Long loanChargeId;
+    private final boolean governmentChargeApplicable;
 
-    public ChargePaymentDTO(final Long chargeId, final Long loanChargeId, final BigDecimal amount) {
+    public ChargePaymentDTO(final Long chargeId, final Long loanChargeId, final BigDecimal amount,final boolean governmentChargeApplicable) {
         this.chargeId = chargeId;
         this.amount = amount;
         this.loanChargeId = loanChargeId;
+        this.governmentChargeApplicable=governmentChargeApplicable;
     }
 
     public Long getChargeId() {
@@ -31,4 +33,8 @@ public class ChargePaymentDTO {
         return this.loanChargeId;
     }
 
+    public boolean isGovernmentChargeApplicable() {
+        return this.governmentChargeApplicable;
+    }
+    
 }

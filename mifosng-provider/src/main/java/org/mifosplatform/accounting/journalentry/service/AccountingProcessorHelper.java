@@ -40,6 +40,7 @@ import org.mifosplatform.accounting.producttoaccountmapping.domain.PortfolioProd
 import org.mifosplatform.accounting.producttoaccountmapping.domain.ProductToGLAccountMapping;
 import org.mifosplatform.accounting.producttoaccountmapping.domain.ProductToGLAccountMappingRepository;
 import org.mifosplatform.accounting.producttoaccountmapping.exception.ProductToGLAccountMappingNotFoundException;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.data.EnumOptionData;
 import org.mifosplatform.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.mifosplatform.organisation.monetary.data.CurrencyData;
@@ -49,6 +50,7 @@ import org.mifosplatform.portfolio.account.PortfolioAccountType;
 import org.mifosplatform.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.mifosplatform.portfolio.client.domain.ClientTransaction;
 import org.mifosplatform.portfolio.client.domain.ClientTransactionRepositoryWrapper;
+import org.mifosplatform.portfolio.common.Utils;
 import org.mifosplatform.portfolio.loanaccount.data.LoanTransactionEnumData;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTransaction;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTransactionRepository;
@@ -76,7 +78,10 @@ public class AccountingProcessorHelper {
     private final ClientTransactionRepositoryWrapper clientTransactionRepository;
     private final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
     private final AccountTransfersReadPlatformService accountTransfersReadPlatformService;
-
+    private final ConfigurationDomainService configurationDomainService;
+    
+    
+    
     @Autowired
     public AccountingProcessorHelper(final JournalEntryRepository glJournalEntryRepository,
             final ProductToGLAccountMappingRepository accountMappingRepository, final GLClosureRepository closureRepository,
@@ -85,7 +90,7 @@ public class AccountingProcessorHelper {
             final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepository,
             final AccountTransfersReadPlatformService accountTransfersReadPlatformService,
             final GLAccountRepositoryWrapper accountRepositoryWrapper,
-            final ClientTransactionRepositoryWrapper clientTransactionRepositoryWrapper) {
+            final ClientTransactionRepositoryWrapper clientTransactionRepositoryWrapper,final ConfigurationDomainService configurationDomainService) {
         this.glJournalEntryRepository = glJournalEntryRepository;
         this.accountMappingRepository = accountMappingRepository;
         this.closureRepository = closureRepository;
@@ -96,6 +101,7 @@ public class AccountingProcessorHelper {
         this.accountTransfersReadPlatformService = accountTransfersReadPlatformService;
         this.accountRepositoryWrapper = accountRepositoryWrapper;
         this.clientTransactionRepository = clientTransactionRepositoryWrapper;
+        this.configurationDomainService=configurationDomainService;
     }
 
     public LoanDTO populateLoanDtoFromMap(final Map<String, Object> accountingBridgeData, final boolean cashBasedAccountingEnabled,
@@ -133,9 +139,11 @@ public class AccountingProcessorHelper {
                 for (final Map<String, Object> loanChargePaid : loanChargesPaidData) {
                     final Long chargeId = (Long) loanChargePaid.get("chargeId");
                     final Long loanChargeId = (Long) loanChargePaid.get("loanChargeId");
+                   
+                    final boolean isGovernmentChargeApplicable=false;
                     final boolean isPenalty = (Boolean) loanChargePaid.get("isPenalty");
                     final BigDecimal chargeAmountPaid = (BigDecimal) loanChargePaid.get("amount");
-                    final ChargePaymentDTO chargePaymentDTO = new ChargePaymentDTO(chargeId, loanChargeId, chargeAmountPaid);
+                    final ChargePaymentDTO chargePaymentDTO = new ChargePaymentDTO(chargeId, loanChargeId, chargeAmountPaid,isGovernmentChargeApplicable);
                     if (isPenalty) {
                         penaltyPaymentDetails.add(chargePaymentDTO);
                     } else {
@@ -193,7 +201,9 @@ public class AccountingProcessorHelper {
                     final Long loanChargeId = (Long) loanChargePaid.get("savingsChargeId");
                     final boolean isPenalty = (Boolean) loanChargePaid.get("isPenalty");
                     final BigDecimal chargeAmountPaid = (BigDecimal) loanChargePaid.get("amount");
-                    final ChargePaymentDTO chargePaymentDTO = new ChargePaymentDTO(chargeId, loanChargeId, chargeAmountPaid);
+                    final boolean isGovernmentChargeApplicable=false;
+                    
+                    final ChargePaymentDTO chargePaymentDTO = new ChargePaymentDTO(chargeId, loanChargeId, chargeAmountPaid,isGovernmentChargeApplicable);
                     if (isPenalty) {
                         penaltyPayments.add(chargePaymentDTO);
                     } else {
@@ -488,14 +498,14 @@ public class AccountingProcessorHelper {
         }
     }
 
-    public void createCreditJournalEntryOrReversalForLoanCharges(final Office office, final String currencyCode,
+   /* public void createCreditJournalEntryOrReversalForLoanCharges(final Office office, final String currencyCode,
             final int accountMappingTypeId, final Long loanProductId, final Long loanId, final String transactionId,
             final Date transactionDate, final BigDecimal totalAmount, final Boolean isReversal,
             final List<ChargePaymentDTO> chargePaymentDTOs) {
-        /***
+        *//***
          * Map to track each account and the net credit to be made for a
          * particular account
-         ***/
+         ***//*
         final Map<GLAccount, BigDecimal> creditDetailsMap = new LinkedHashMap<>();
         for (final ChargePaymentDTO chargePaymentDTO : chargePaymentDTOs) {
             final Long chargeId = chargePaymentDTO.getChargeId();
@@ -529,6 +539,149 @@ public class AccountingProcessorHelper {
                 "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
                 "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
                 totalCreditedAmount, totalAmount); }
+    }*/
+    
+  /*  public void createCreditJournalEntryOrReversalForLoanCharges(final Office office, final String currencyCode,
+            final int accountMappingTypeId, final Long loanProductId, final Long loanId, final String transactionId,
+            final Date transactionDate, final BigDecimal totalAmount, final Boolean isReversal,
+            final List<ChargePaymentDTO> chargePaymentDTOs) {
+        *//***
+         * Map to track each account and the net credit to be made for a
+         * particular account
+         ***//*
+          final Map<GLAccount, BigDecimal> creditDetailsMap = new LinkedHashMap<>();
+            for (final ChargePaymentDTO chargePaymentDTO : chargePaymentDTOs) {
+            final Long chargeId = chargePaymentDTO.getChargeId();
+            final GLAccount chargeSpecificAccount = getLinkedGLAccountForLoanCharges(loanProductId, accountMappingTypeId, chargeId);
+            BigDecimal chargeSpecificAmount = chargePaymentDTO.getAmount();
+
+            // adjust net credit amount if the account is already present in the
+            // map
+            if (creditDetailsMap.containsKey(chargeSpecificAccount)) {
+                final BigDecimal existingAmount = creditDetailsMap.get(chargeSpecificAccount);
+                chargeSpecificAmount = chargeSpecificAmount.add(existingAmount);
+            }
+            creditDetailsMap.put(chargeSpecificAccount, chargeSpecificAmount);
+        }
+
+        BigDecimal totalCreditedAmount = BigDecimal.ZERO;
+        for (final Map.Entry<GLAccount, BigDecimal> entry : creditDetailsMap.entrySet()) {
+            final GLAccount account = entry.getKey();
+            final BigDecimal amount = entry.getValue();
+            totalCreditedAmount = totalCreditedAmount.add(amount);
+            if (isReversal) {
+                createDebitJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
+            } else {
+                createCreditJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
+            }
+        }
+
+        // TODO: Vishwas Temporary validation to be removed before moving to
+        // release branch
+        if (totalAmount.compareTo(totalCreditedAmount) != 0) { throw new PlatformDataIntegrityException(
+                "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
+                "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
+                totalCreditedAmount, totalAmount); }
+    }*/
+    
+    public void createCreditJournalEntryOrReversalForLoanCharges(final Office office, final String currencyCode,
+            final int accountMappingTypeId, final Long loanProductId, final Long loanId, final String transactionId,
+            final Date transactionDate, final BigDecimal totalAmount, final Boolean isReversal,
+            final List<ChargePaymentDTO> chargePaymentDTOs) {
+        /***
+         * Map to track each account and the net credit to be made for a
+         * particular account
+         ***/
+        final Map<String, BigDecimal> taxComponent = this.configurationDomainService.retriveTaxComponents();
+        final Map<GLAccount, BigDecimal> creditDetailsMap = new LinkedHashMap<>();
+        BigDecimal servicetax = BigDecimal.ZERO.setScale(Utils.DEFAULT_SCALE, Utils.ROUNDING_MODE);
+        BigDecimal educationCess = BigDecimal.ZERO.setScale(Utils.DEFAULT_SCALE, Utils.ROUNDING_MODE);
+        BigDecimal shEducationCess = BigDecimal.ZERO.setScale(Utils.DEFAULT_SCALE, Utils.ROUNDING_MODE);
+        BigDecimal totalCreditedAmount = BigDecimal.ZERO;
+        for (final ChargePaymentDTO chargePaymentDTO : chargePaymentDTOs) {
+            final Long chargeId = chargePaymentDTO.getChargeId();
+            final GLAccount chargeSpecificAccount = getLinkedGLAccountForLoanCharges(loanProductId, accountMappingTypeId, chargeId);
+            BigDecimal chargeSpecificAmount = chargePaymentDTO.getAmount();
+            totalCreditedAmount = totalCreditedAmount.add(chargeSpecificAmount);
+            if (chargePaymentDTO.isGovernmentChargeApplicable() && chargeSpecificAmount.compareTo(BigDecimal.ZERO) == 1) {
+                Map<String, BigDecimal> taxChargeComponent = Utils.splitCharge(chargeSpecificAmount, taxComponent);
+                chargeSpecificAmount = taxChargeComponent.get(Utils.ACTUAL_CHARGE);
+                servicetax = servicetax.add(taxChargeComponent.get(Utils.SERVICE_TAX));
+                educationCess = educationCess.add(taxChargeComponent.get(Utils.EDUCATION_CESS));
+                shEducationCess = shEducationCess.add(taxChargeComponent.get(Utils.SH_EDUCATION_CESS));
+            }
+            // adjust net credit amount if the account is already present in the
+            // map
+            if (creditDetailsMap.containsKey(chargeSpecificAccount)) {
+                final BigDecimal existingAmount = creditDetailsMap.get(chargeSpecificAccount);
+                chargeSpecificAmount = chargeSpecificAmount.add(existingAmount);
+            }
+            creditDetailsMap.put(chargeSpecificAccount, chargeSpecificAmount);
+        }
+
+        // TODO: Vishwas Temporary validation to be removed before moving to
+        // release branch
+        if (totalAmount.compareTo(totalCreditedAmount) != 0) { throw new PlatformDataIntegrityException(
+                "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
+                "Meltdown in advanced accounting...sum of all charges is not equal to the fee charge for a transaction",
+                totalCreditedAmount, totalAmount); }
+
+        if (servicetax.compareTo(BigDecimal.ZERO) == 1) {
+            createJournalEntriesAndReversalsForServiceTax(office, currencyCode, loanId, transactionId, transactionDate, isReversal,servicetax, educationCess, shEducationCess);
+        }
+
+        for (final Map.Entry<GLAccount, BigDecimal> entry : creditDetailsMap.entrySet()) {
+            final GLAccount account = entry.getKey();
+            BigDecimal amount = entry.getValue();
+            if (isReversal) {
+                createDebitJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
+            } else {
+                createCreditJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
+            }
+        }
+    }
+    
+    
+    public Map<String, BigDecimal> getTaxComponents(final BigDecimal amount) {
+        final Map<String, BigDecimal> taxComponent = this.configurationDomainService.retriveTaxComponents();
+        final Map<String, BigDecimal> taxComponentOfCharge = Utils.splitCharge(amount, taxComponent);
+        return taxComponentOfCharge;
+    }
+    
+    
+    public void createJournalEntriesAndReversalsForServiceTax(final Office office, final String currencyCode, final Long loanId,
+            final String transactionId, final Date transactionDate, final Boolean isReversal,
+             final BigDecimal servicetax, final BigDecimal educationCess,
+            final BigDecimal shEducationCess) {
+        GLAccount serviceTaxGL = getLinkedGLAccountForLoanProduct(null, FINANCIAL_ACTIVITY.SERVICE_TAX.getValue(), null);
+        GLAccount educationCessGL = getLinkedGLAccountForLoanProduct(null, FINANCIAL_ACTIVITY.EDUCATION_CESS.getValue(), null);
+        GLAccount shEducationCessGL = getLinkedGLAccountForLoanProduct(null, FINANCIAL_ACTIVITY.SH_EDUCATION_CESS.getValue(), null);
+
+        if (isReversal) {
+            if (servicetax.compareTo(BigDecimal.ZERO) == 1) {
+                createDebitJournalEntryForLoan(office, currencyCode, serviceTaxGL, loanId, transactionId, transactionDate, servicetax);
+            }
+            if (educationCess.compareTo(BigDecimal.ZERO) == 1) {
+                createDebitJournalEntryForLoan(office, currencyCode, educationCessGL, loanId, transactionId, transactionDate,
+                        educationCess);
+            }
+            if (shEducationCess.compareTo(BigDecimal.ZERO) == 1) {
+                createDebitJournalEntryForLoan(office, currencyCode, shEducationCessGL, loanId, transactionId, transactionDate,
+                        shEducationCess);
+            }
+        } else {
+            if (servicetax.compareTo(BigDecimal.ZERO) == 1) {
+                createCreditJournalEntryForLoan(office, currencyCode, serviceTaxGL, loanId, transactionId, transactionDate, servicetax);
+            }
+            if (educationCess.compareTo(BigDecimal.ZERO) == 1) {
+                createCreditJournalEntryForLoan(office, currencyCode, educationCessGL, loanId, transactionId, transactionDate,
+                        educationCess);
+            }
+            if (shEducationCess.compareTo(BigDecimal.ZERO) == 1) {
+                createCreditJournalEntryForLoan(office, currencyCode, shEducationCessGL, loanId, transactionId, transactionDate,
+                        shEducationCess);
+            }
+        }
     }
 
     /**

@@ -82,6 +82,10 @@ public class Charge extends AbstractPersistable<Long> {
     @Column(name = "is_deleted", nullable = false)
     private boolean deleted = false;
 
+    @Column(name = "is_government_charge_applicable", nullable = false)
+    private boolean governmentChargeApplicable = false;
+
+    
     @Column(name = "min_cap", scale = 6, precision = 19, nullable = true)
     private BigDecimal minCap;
 
@@ -523,6 +527,9 @@ public class Charge extends AbstractPersistable<Long> {
 
     public Integer getFeeInterval() {
         return this.feeInterval;
+    }
+    public boolean isGovernmentChargeApplicable() {
+        return this.governmentChargeApplicable;
     }
 
     public boolean isMonthlyFee() {

@@ -141,4 +141,16 @@ public final class LoanScheduleModelRepaymentPeriod implements LoanScheduleModel
         this.interestDue = this.interestDue.plus(interestDue);
         this.totalDue = this.totalDue.plus(principalDue);
     }
+    
+    @Override
+    public BigDecimal feeChargesIncomeDerived() {
+        return null;
+    }
+
+    @Override
+    public BigDecimal penaltyChargesIncomeDerived() {
+        return null;
+    }
+    
+    
 }

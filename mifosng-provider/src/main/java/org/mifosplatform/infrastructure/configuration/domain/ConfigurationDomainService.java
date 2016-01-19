@@ -5,6 +5,9 @@
  */
 package org.mifosplatform.infrastructure.configuration.domain;
 
+import java.math.BigDecimal;
+import java.util.Map;
+
 import org.mifosplatform.infrastructure.cache.domain.CacheType;
 
 public interface ConfigurationDomainService {
@@ -42,7 +45,15 @@ public interface ConfigurationDomainService {
     Integer retrieveFinancialYearBeginningMonth();
 
     public Integer retrieveMinAllowedClientsInGroup();
+    
+    BigDecimal retieveServiceTax();
 
+    BigDecimal retieveEducationCess();
+
+    BigDecimal retieveSHEducationCess();
+
+    Map<String, BigDecimal> retriveTaxComponents();
+    
     public Integer retrieveMaxAllowedClientsInGroup();
 
     boolean isMeetingMandatoryForJLGLoans();

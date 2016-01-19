@@ -5,10 +5,15 @@
  */
 package org.mifosplatform.infrastructure.configuration.domain;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.apache.commons.lang.StringUtils;
 import org.mifosplatform.infrastructure.cache.domain.CacheType;
 import org.mifosplatform.infrastructure.cache.domain.PlatformCache;
 import org.mifosplatform.infrastructure.cache.domain.PlatformCacheRepository;
+import org.mifosplatform.portfolio.common.Utils;
 import org.mifosplatform.useradministration.domain.Permission;
 import org.mifosplatform.useradministration.domain.PermissionRepository;
 import org.mifosplatform.useradministration.exception.PermissionNotFoundException;
@@ -98,6 +103,48 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public boolean isEhcacheEnabled() {
         return this.cacheTypeRepository.findOne(Long.valueOf(1)).isEhcacheEnabled();
     }
+    
+    @Override
+    public BigDecimal retieveServiceTax() {
+        final String propertyName = "service-tax";
+        final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+        if (property.isEnabled()) return extractBigDecimalValue(property);
+        return BigDecimal.ZERO;
+    }
+    
+    @Override
+    public BigDecimal retieveEducationCess() {
+        final String propertyName = "education-cess";
+        final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+        if (property.isEnabled()) return extractBigDecimalValue(property);
+        return BigDecimal.ZERO;
+    }
+    
+    @Override
+    public BigDecimal retieveSHEducationCess() {
+        final String propertyName = "sh-education-cess";
+        final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+        if (property.isEnabled()) return extractBigDecimalValue(property);
+        return BigDecimal.ZERO;
+    }
+    
+    @Override
+    public Map<String, BigDecimal> retriveTaxComponents(){
+        Map<String,BigDecimal> map = new HashMap<>(3);
+        map.put(Utils.SERVICE_TAX_PERCENTAGE, retieveServiceTax());
+        map.put(Utils.EDUCATION_CESS_PERCENTAGE, retieveEducationCess());
+        map.put(Utils.SH_EDUCATION_CESS_PERCENTAGE, retieveSHEducationCess());
+        return map;
+    }
+    
+    private BigDecimal extractBigDecimalValue(final GlobalConfigurationProperty property) {
+        BigDecimal value = BigDecimal.ZERO;
+        if (property.getValue() != null) {
+            value = BigDecimal.valueOf(Double.valueOf(property.getValue()));
+        }
+        return value;
+    }
+    
 
     @Transactional
     @Override
