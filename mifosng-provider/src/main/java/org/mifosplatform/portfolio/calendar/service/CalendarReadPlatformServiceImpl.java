@@ -9,9 +9,12 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainServiceJpa;
 import org.mifosplatform.infrastructure.core.data.EnumOptionData;
 import org.mifosplatform.infrastructure.core.domain.JdbcSupport;
 import org.mifosplatform.infrastructure.core.service.DateUtils;
@@ -32,10 +35,12 @@ import org.springframework.util.CollectionUtils;
 public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
-
+    private final ConfigurationDomainService configurationDomainService;
+    
     @Autowired
-    public CalendarReadPlatformServiceImpl(final RoutingDataSource dataSource) {
+    public CalendarReadPlatformServiceImpl(final RoutingDataSource dataSource,final ConfigurationDomainService configurationDomainService) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.configurationDomainService=configurationDomainService;
     }
 
     private static final class CalendarDataMapper implements RowMapper<CalendarData> {
@@ -212,6 +217,7 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
 
         if (!calendarData.isRepeating()) { return null; }
         final String rrule = calendarData.getRecurrence();
+        /**/
         /**
          * Start date or effective from date of calendar recurrence.
          */
@@ -224,11 +230,30 @@ public class CalendarReadPlatformServiceImpl implements CalendarReadPlatformServ
          * till periodEndDate recurring dates will be generated.
          */
         final LocalDate periodEndDate = this.getPeriodEndDate(calendarData.getEndDate(), tillDate);
+        
+        /*if(calendarData.getEntityType().equals(CalendarEntityType.GROUPS.getValue()))
+        {
+        	
+        }*/
 
+        final Long groupCheck1=calendarData.getEntityType().getId();
+        final Long groupCheck=CalendarEntityType.GROUPS.getValue().longValue();
+        boolean isGruop=groupCheck.equals(groupCheck1);
+        boolean isSkippMeetingOnFirstDay=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        boolean isSkipp=false;
+        if(isGruop==true && isSkippMeetingOnFirstDay==true){isSkipp=true;}
+        final int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
         final Collection<LocalDate> recurringDates = CalendarUtils.getRecurringDates(rrule, seedDate, periodStartDate, periodEndDate,
-                maxCount);
+                maxCount,isSkipp,numberOfDays);
+       
+        
+       
+        
         return recurringDates;
+        
     }
+    
+   
 
     private LocalDate getSeedDate(LocalDate date) {
         return date;

@@ -896,7 +896,11 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
                     || changes.containsKey("expectedDisbursementDate")) {
                 LocalDate recalculateFrom = null;
                 ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
+              boolean isSkippingMeetingOnFirstDayOfMonthEnabled= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+              boolean isClanderBelongsGroup=false;
+              if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+              int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser, isSkippingMeetingOnFirstDayOfMonthEnabled,isClanderBelongsGroup,numberOfDays);
             }
 
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
@@ -944,7 +948,11 @@ public class LoanApplicationWritePlatformServiceJpaRepositoryImpl implements Loa
                     || changes.containsKey(LoanApiConstants.disbursementPrincipalParameterName)) {
                 LocalDate recalculateFrom = null;
                 ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
+                boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+                boolean isClanderBelongsGroup=false;
+                if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+                int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isClanderBelongsGroup,numberOfDays);
             }
 
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);

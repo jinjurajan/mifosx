@@ -258,7 +258,13 @@ public class LoanScheduleAssembler {
          * first repayment falls on meeting date
          */
         if ((loanType.isJLGAccount() || loanType.isGroupAccount()) && calendar != null) {
-            validateRepaymentsStartDateWithMeetingDates(calculatedRepaymentsStartingFromDate, calendar);
+        	boolean isSkipp=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        	//configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        	if(isSkipp==false)
+        	{
+        		validateRepaymentsStartDateWithMeetingDates(calculatedRepaymentsStartingFromDate, calendar);
+        	}
+        	
             /*
              * If disbursement is synced on meeting, make sure disbursement date
              * is on a meeting date
@@ -528,12 +534,12 @@ public class LoanScheduleAssembler {
         validateDisbursementDateIsOnNonWorkingDay(loanApplicationTerms.getExpectedDisbursementDate(), workingDays);
         validateDisbursementDateIsOnHoliday(loanApplicationTerms.getExpectedDisbursementDate(), isHolidayEnabled, holidays);
 
-        return assembleLoanScheduleFrom(loanApplicationTerms, isHolidayEnabled, holidays, workingDays, element, null);
+        return assembleLoanScheduleFrom(loanApplicationTerms, isHolidayEnabled, holidays, workingDays, element, null,groupId);
     }
 
     public LoanScheduleModel assembleLoanScheduleFrom(final LoanApplicationTerms loanApplicationTerms, final boolean isHolidayEnabled,
             final List<Holiday> holidays, final WorkingDays workingDays, final JsonElement element,
-            Set<LoanDisbursementDetails> disbursementDetails) {
+            Set<LoanDisbursementDetails> disbursementDetails,final Long groupId) {
 
         final Set<LoanCharge> loanCharges = this.loanChargeAssembler.fromParsedJson(element, disbursementDetails);
 
@@ -543,14 +549,19 @@ public class LoanScheduleAssembler {
         final MathContext mc = new MathContext(8, roundingMode);
 
         HolidayDetailDTO detailDTO = new HolidayDetailDTO(isHolidayEnabled, holidays, workingDays);
-
-        return loanScheduleGenerator.generate(mc, loanApplicationTerms, loanCharges, detailDTO);
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        Calendar currentCalendar=loanApplicationTerms.getLoanCalendar();
+        boolean isClanderBelongsGroup=false;
+        CalendarInstance calendarIntance=calendarInstanceRepository.findByEntityIdAndEntityTypeIdAndCalendarTypeId(groupId, CalendarEntityType.GROUPS.getValue(), currentCalendar.getTypeId());
+        if(calendarIntance !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        return loanScheduleGenerator.generate(mc, loanApplicationTerms, loanCharges, detailDTO,isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
     }
 
     public LoanScheduleModel assembleForInterestRecalculation(final LoanApplicationTerms loanApplicationTerms, final Long officeId,
             List<LoanTransaction> transactions, final Set<LoanCharge> loanCharges,
             final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
-            final List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments, final LocalDate rescheduleFrom) {
+            final List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments, final LocalDate rescheduleFrom,boolean isMeetingSkipOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays) {
         final RoundingMode roundingMode = MoneyHelper.getRoundingMode();
         final MathContext mc = new MathContext(8, roundingMode);
         final boolean isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
@@ -559,17 +570,20 @@ public class LoanScheduleAssembler {
                 .getExpectedDisbursementDate().toDate(), HolidayStatusType.ACTIVE.getValue());
         final WorkingDays workingDays = this.workingDaysRepository.findOne();
 
+       
+        
+        
         final LoanScheduleGenerator loanScheduleGenerator = this.loanScheduleFactory.create(loanApplicationTerms.getInterestMethod());
         HolidayDetailDTO detailDTO = new HolidayDetailDTO(isHolidayEnabled, holidays, workingDays);
         return loanScheduleGenerator.rescheduleNextInstallments(mc, loanApplicationTerms, loanCharges, detailDTO, transactions,
-                loanRepaymentScheduleTransactionProcessor, repaymentScheduleInstallments, rescheduleFrom).getLoanScheduleModel();
+                loanRepaymentScheduleTransactionProcessor, repaymentScheduleInstallments, rescheduleFrom,isMeetingSkipOnFirstDayOfMonth, isClanderBelongsGroup, numberOfDays).getLoanScheduleModel();
     }
 
     public LoanRepaymentScheduleInstallment calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
             LoanApplicationTerms loanApplicationTerms, final Set<LoanCharge> loanCharges, final Long officeId,
             List<LoanTransaction> loanTransactions,
             final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
-            final List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments) {
+            final List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments,final Long groupId) {
         final LoanScheduleGenerator loanScheduleGenerator = this.loanScheduleFactory.create(loanApplicationTerms.getInterestMethod());
         final RoundingMode roundingMode = MoneyHelper.getRoundingMode();
         final MathContext mc = new MathContext(8, roundingMode);
@@ -580,8 +594,15 @@ public class LoanScheduleAssembler {
         final WorkingDays workingDays = this.workingDaysRepository.findOne();
         HolidayDetailDTO holidayDetailDTO = new HolidayDetailDTO(isHolidayEnabled, holidays, workingDays);
 
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+       
+        Calendar currentCalendar=loanApplicationTerms.getLoanCalendar();
+        boolean isClanderBelongsGroup=false;
+        CalendarInstance calendarIntance=calendarInstanceRepository.findByEntityIdAndEntityTypeIdAndCalendarTypeId(groupId, CalendarEntityType.GROUPS.getValue(), currentCalendar.getTypeId());
+        if(calendarIntance !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
         return loanScheduleGenerator.calculatePrepaymentAmount(currency, onDate, loanApplicationTerms, mc, loanCharges, holidayDetailDTO,
-                loanTransactions, loanRepaymentScheduleTransactionProcessor, repaymentScheduleInstallments);
+                loanTransactions, loanRepaymentScheduleTransactionProcessor, repaymentScheduleInstallments,isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
 
     }
 
@@ -759,7 +780,11 @@ public class LoanScheduleAssembler {
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         AppUser currentUser = this.context.getAuthenticatedUserIfPresent();
-        loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
     }
 
     private List<LoanTermVariations> adjustExistingVariations(List<LoanTermVariations> variations, List<LoanTermVariations> newVariations,
@@ -989,9 +1014,19 @@ public class LoanScheduleAssembler {
             final LocalDate refernceDateForCalculatingFirstRepaymentDate, final PeriodFrequencyType repaymentPeriodFrequencyType,
             final Integer minimumDaysBetweenDisbursalAndFirstRepayment, final Calendar calendar) {
 
+    	
+    	
         final String frequency = CalendarUtils.getMeetingFrequencyFromPeriodFrequencyType(repaymentPeriodFrequencyType);
+        
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+       
+        boolean isClanderBelongsGroup=false;
+       /* CalendarInstance calendarIntance=calendarInstanceRepository.findByEntityIdAndEntityTypeIdAndCalendarTypeId(groupId, CalendarEntityType.GROUPS.getValue(), calendar.getTypeId());
+        if(calendarIntance!=null){isClanderBelongsGroup=true;}
+       */
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
         final LocalDate derivedFirstRepayment = CalendarUtils.getFirstRepaymentMeetingDate(calendar,
-                refernceDateForCalculatingFirstRepaymentDate, repaymentEvery, frequency);
+                refernceDateForCalculatingFirstRepaymentDate, repaymentEvery, frequency,isMeetingSkipOnFirstDayOfMonth,numberOfDays);
         final LocalDate minimumFirstRepaymentDate = expectedDisbursementDate.plusDays(minimumDaysBetweenDisbursalAndFirstRepayment);
         return minimumFirstRepaymentDate.isBefore(derivedFirstRepayment) ? derivedFirstRepayment : deriveFirstRepaymentDateForJLGLoans(
                 repaymentEvery, expectedDisbursementDate, derivedFirstRepayment, repaymentPeriodFrequencyType,

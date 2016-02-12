@@ -162,8 +162,14 @@ public class LoanUtilService {
                     final Integer repayEvery = repaymentScheduleDetails.getRepayEvery();
                     final String frequency = CalendarUtils.getMeetingFrequencyFromPeriodFrequencyType(repaymentScheduleDetails
                             .getRepaymentPeriodFrequencyType());
+                   boolean isSkipFirstDayOfMonth= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+                   boolean isCalendarBelongsToGroup=false;
+                   if(loan.getGroupId()!=null){isCalendarBelongsToGroup=true;}
+                   boolean isSkipp=false;
+                   if(isSkipFirstDayOfMonth==true && isCalendarBelongsToGroup==true ){isSkipp=true;}
+                   int numberOfdays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
                     calculatedRepaymentsStartingFromDate = CalendarUtils.getFirstRepaymentMeetingDate(calendar, actualDisbursementDate,
-                            repayEvery, frequency);
+                            repayEvery, frequency,isSkipp,numberOfdays);
                 }
             }
         }

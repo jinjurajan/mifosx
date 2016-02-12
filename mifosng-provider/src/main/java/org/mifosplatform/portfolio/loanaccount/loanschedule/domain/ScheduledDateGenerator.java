@@ -12,13 +12,13 @@ import org.mifosplatform.portfolio.loanaccount.data.HolidayDetailDTO;
 
 public interface ScheduledDateGenerator {
 
-    LocalDate getLastRepaymentDate(LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO);
+    LocalDate getLastRepaymentDate(LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 
     LocalDate idealDisbursementDateBasedOnFirstRepaymentDate(PeriodFrequencyType repaymentPeriodFrequencyType, int repaidEvery,
             final LocalDate firstRepaymentDate);
 
     LocalDate generateNextRepaymentDate(LocalDate lastRepaymentDate, LoanApplicationTerms loanApplicationTerms, boolean isFirstRepayment,
-            final HolidayDetailDTO holidayDetailDTO);
+            final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 
     LocalDate adjustRepaymentDate(LocalDate dueRepaymentPeriodDate, LoanApplicationTerms loanApplicationTerms,
             final HolidayDetailDTO holidayDetailDTO);
@@ -29,5 +29,5 @@ public interface ScheduledDateGenerator {
     Boolean isDateFallsInSchedule(PeriodFrequencyType frequency, int repaidEvery, LocalDate startDate, LocalDate date);
 
     LocalDate generateNextScheduleDateStartingFromDisburseDate(LocalDate lastRepaymentDate, LoanApplicationTerms loanApplicationTerms,
-            final HolidayDetailDTO holidayDetailDTO);
+            final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 }

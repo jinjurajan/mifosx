@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.api.JsonCommand;
 import org.mifosplatform.infrastructure.core.data.CommandProcessingResult;
 import org.mifosplatform.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -34,16 +35,18 @@ public class LoanScheduleWritePlatformServiceImpl implements LoanScheduleWritePl
     private final LoanScheduleAssembler loanScheduleAssembler;
     private final PlatformSecurityContext context;
     private final LoanUtilService loanUtilService;
+    private final ConfigurationDomainService configurationDomainService;
 
     @Autowired
     public LoanScheduleWritePlatformServiceImpl(final LoanAccountDomainService loanAccountDomainService,
             final LoanScheduleAssembler loanScheduleAssembler, final LoanAssembler loanAssembler, final PlatformSecurityContext context,
-            final LoanUtilService loanUtilService) {
+            final LoanUtilService loanUtilService,final ConfigurationDomainService configurationDomainService) {
         this.loanAccountDomainService = loanAccountDomainService;
         this.loanScheduleAssembler = loanScheduleAssembler;
         this.loanAssembler = loanAssembler;
         this.context = context;
         this.loanUtilService = loanUtilService;
+        this.configurationDomainService= configurationDomainService;
     }
 
     @Override
@@ -91,7 +94,12 @@ public class LoanScheduleWritePlatformServiceImpl implements LoanScheduleWritePl
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
         AppUser currentUser = this.context.getAuthenticatedUserIfPresent();
-        loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        boolean isClanderBelongsGroup=false;
+        if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        
+        loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isClanderBelongsGroup,numberOfDays);
         this.loanAccountDomainService.saveLoanWithDataIntegrityViolationChecks(loan);
         return new CommandProcessingResultBuilder() //
                 .withLoanId(loanId) //

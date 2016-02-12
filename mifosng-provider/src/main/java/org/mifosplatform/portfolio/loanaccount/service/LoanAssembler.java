@@ -286,7 +286,7 @@ public class LoanAssembler {
         final boolean allowTransactionsOnNonWorkingDay = this.configurationDomainService.allowTransactionsOnNonWorkingDayEnabled();
         final boolean allowTransactionsOnHoliday = this.configurationDomainService.allowTransactionsOnHolidayEnabled();
         final LoanScheduleModel loanScheduleModel = this.loanScheduleAssembler.assembleLoanScheduleFrom(loanApplicationTerms,
-                isHolidayEnabled, holidays, workingDays, element,disbursementDetails);
+                isHolidayEnabled, holidays, workingDays, element,disbursementDetails,groupId);
         loanApplication.loanApplicationSubmittal(currentUser, loanScheduleModel, loanApplicationTerms, defaultLoanLifecycleStateMachine(),
                 submittedOnDate, externalId, allowTransactionsOnHoliday, holidays, workingDays, allowTransactionsOnNonWorkingDay,
                 recalculationRestFrequencyDate, recalculationCompoundingFrequencyDate);

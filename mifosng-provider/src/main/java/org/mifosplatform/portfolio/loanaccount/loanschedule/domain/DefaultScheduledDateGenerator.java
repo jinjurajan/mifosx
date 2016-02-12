@@ -10,10 +10,13 @@ import org.joda.time.LocalDate;
 import org.joda.time.Months;
 import org.joda.time.Weeks;
 import org.joda.time.Years;
+
 import org.mifosplatform.organisation.holiday.service.HolidayUtil;
 import org.mifosplatform.organisation.workingdays.domain.RepaymentRescheduleType;
 import org.mifosplatform.organisation.workingdays.service.WorkingDaysUtil;
 import org.mifosplatform.portfolio.calendar.domain.Calendar;
+import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
+import org.mifosplatform.portfolio.calendar.service.CalendarReadPlatformServiceImpl;
 import org.mifosplatform.portfolio.calendar.service.CalendarUtils;
 import org.mifosplatform.portfolio.common.domain.DayOfWeekType;
 import org.mifosplatform.portfolio.common.domain.PeriodFrequencyType;
@@ -21,15 +24,15 @@ import org.mifosplatform.portfolio.loanaccount.data.HolidayDetailDTO;
 
 public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
-    @Override
-    public LocalDate getLastRepaymentDate(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO) {
+	@Override
+    public LocalDate getLastRepaymentDate(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays) {
 
         final int numberOfRepayments = loanApplicationTerms.getNumberOfRepayments();
 
         LocalDate lastRepaymentDate = loanApplicationTerms.getExpectedDisbursementDate();
         boolean isFirstRepayment = true;
         for (int repaymentPeriod = 1; repaymentPeriod <= numberOfRepayments; repaymentPeriod++) {
-            lastRepaymentDate = generateNextRepaymentDate(lastRepaymentDate, loanApplicationTerms, isFirstRepayment, holidayDetailDTO);
+            lastRepaymentDate = generateNextRepaymentDate(lastRepaymentDate, loanApplicationTerms, isFirstRepayment, holidayDetailDTO, isSkipRepaymentOnFirstDayOfMonth, isClanderBelongsGroup, numberOfDays);
             isFirstRepayment = false;
         }
         lastRepaymentDate = adjustRepaymentDate(lastRepaymentDate, loanApplicationTerms, holidayDetailDTO);
@@ -38,7 +41,7 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     @Override
     public LocalDate generateNextRepaymentDate(final LocalDate lastRepaymentDate, final LoanApplicationTerms loanApplicationTerms,
-            boolean isFirstRepayment, final HolidayDetailDTO holidayDetailDTO) {
+        boolean isFirstRepayment, final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays) {
         final LocalDate firstRepaymentPeriodDate = loanApplicationTerms.getCalculatedRepaymentsStartingFromLocalDate();
         LocalDate dueRepaymentPeriodDate = null;
         if (isFirstRepayment && firstRepaymentPeriodDate != null) {
@@ -55,17 +58,50 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
                 // calendar associated with
                 // the loan, and we should use it in order to calculate next
                 // repayment
+            	//final Long groupCheck1=currentCalendar.getId();
+            	
+            	
+              // calendarInstanceRepository.findByCalendarIdAndEntityTypeId(currentCalendar.getId(), CalendarEntityType.GROUPS);
+            	//final Long groupCheck1=calendarData.getEntityType().getId();
+                final Long groupCheck=CalendarEntityType.GROUPS.getValue().longValue();
+               // boolean isGruop=groupCheck.equals(groupCheck1);
+            	boolean isSkipp=false;
+            	if(isSkipRepaymentOnFirstDayOfMonth==true &&isClanderBelongsGroup==true){isSkipp=true;}
                 LocalDate seedDate = currentCalendar.getStartDateLocalDate();
                 String reccuringString = currentCalendar.getRecurrence();
-                dueRepaymentPeriodDate = CalendarUtils.getNewRepaymentMeetingDate(reccuringString, seedDate, dueRepaymentPeriodDate,
+                dueRepaymentPeriodDate = CalendarUtils.getNewRepaymentMeetingDate(reccuringString, seedDate, lastRepaymentDate.plusDays(1),
                         loanApplicationTerms.getRepaymentEvery(),
                         CalendarUtils.getMeetingFrequencyFromPeriodFrequencyType(loanApplicationTerms.getLoanTermPeriodFrequencyType()),
-                        holidayDetailDTO.getWorkingDays());
+                        holidayDetailDTO.getWorkingDays(),isSkipp,numberOfDays);
             }
         }
+       /* Calendar loanCalander=loanApplicationTerms.getLoanCalendar();
+        final Long groupCheck1=loanCalander.getTypeId().longValue();
+        final Long groupCheck=CalendarEntityType.GROUPS.getValue().longValue();
+        boolean isGruop=groupCheck.equals(groupCheck1);
+        boolean check=isSkipRepaymentOnFirstDayOfMonth;
+        if(isSkipRepaymentOnFirstDayOfMonth==true)
+        {
+        	dueRepaymentPeriodDate=adjustRecurringDate(dueRepaymentPeriodDate);
+        	 return dueRepaymentPeriodDate;
+        }
+        */
         return dueRepaymentPeriodDate;
     }
-
+   /* private LocalDate adjustRecurringDate(LocalDate dueRepaymentPeriodDate)
+    {
+    	if(dueRepaymentPeriodDate.getDayOfMonth()==1)
+    	{
+    		//LocalDate recuringDateTemp=dueRepaymentPeriodDate.plusDays(configurationDomainService.retrieveSkippingMeetingPeriod().intValue());
+    		LocalDate recuringDateTemp=dueRepaymentPeriodDate.plusWeeks(2);
+    		return recuringDateTemp;
+    	}
+    	
+    
+    	return dueRepaymentPeriodDate;
+    	
+    }*/
+    
     @Override
     public LocalDate adjustRepaymentDate(final LocalDate dueRepaymentPeriodDate, final LoanApplicationTerms loanApplicationTerms,
             final HolidayDetailDTO holidayDetailDTO) {
@@ -211,12 +247,12 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     @Override
     public LocalDate generateNextScheduleDateStartingFromDisburseDate(LocalDate lastRepaymentDate,
-            LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO) {
+            LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,boolean isSkipRepaymentOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays) {
 
         LocalDate generatedDate = loanApplicationTerms.getExpectedDisbursementDate();
         boolean isFirstRepayment = true;
         while (!generatedDate.isAfter(lastRepaymentDate)) {
-            generatedDate = generateNextRepaymentDate(generatedDate, loanApplicationTerms, isFirstRepayment, holidayDetailDTO);
+            generatedDate = generateNextRepaymentDate(generatedDate, loanApplicationTerms, isFirstRepayment, holidayDetailDTO, isSkipRepaymentOnFirstDayOfMonth, isClanderBelongsGroup, numberOfDays);
             isFirstRepayment = false;
         }
         generatedDate = adjustRepaymentDate(generatedDate, loanApplicationTerms, holidayDetailDTO);

@@ -14,6 +14,7 @@ import java.util.TreeMap;
 
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.service.DateUtils;
 import org.mifosplatform.organisation.monetary.domain.Money;
 import org.mifosplatform.portfolio.loanaccount.data.LoanTermVariationsData;
@@ -45,8 +46,14 @@ import org.mifosplatform.portfolio.loanproduct.domain.AmortizationMethod;
  * </p>
  */
 public class DecliningBalanceInterestLoanScheduleGenerator extends AbstractLoanScheduleGenerator {
-
-    @Override
+	
+	
+   /* public DecliningBalanceInterestLoanScheduleGenerator(ConfigurationDomainService configurationDomainService) {
+		super(configurationDomainService);
+		// TODO Auto-generated constructor stub
+	}
+*/
+	@Override
     public PrincipalInterest calculatePrincipalInterestComponentsForPeriod(final PaymentPeriodsInOneYearCalculator calculator,
             final double interestCalculationGraceOnRepaymentPeriodFraction, final Money totalCumulativePrincipal,
             @SuppressWarnings("unused") final Money totalCumulativeInterest,

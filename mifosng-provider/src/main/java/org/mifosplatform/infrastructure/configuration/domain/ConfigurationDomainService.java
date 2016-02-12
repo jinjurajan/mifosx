@@ -50,4 +50,8 @@ public interface ConfigurationDomainService {
     int getRoundingMode();
 
     boolean isBackdatePenaltiesEnabled();
+    
+    boolean isSkippingMeetingOnFirstDayOfMonthEnabled();
+    
+    Long retrieveSkippingMeetingPeriod();
 }

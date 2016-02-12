@@ -27,19 +27,19 @@ import org.mifosplatform.portfolio.loanaccount.rescheduleloan.domain.LoanResched
 public interface LoanScheduleGenerator {
 
     LoanScheduleModel generate(MathContext mc, LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> loanCharges,
-            final HolidayDetailDTO holidayDetailDTO);
+            final HolidayDetailDTO holidayDetailDTO,boolean isMeetingSkipOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 
     LoanScheduleDTO rescheduleNextInstallments(MathContext mc, LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> loanCharges,
             final HolidayDetailDTO holidayDetailDTO, List<LoanTransaction> transactions,
             LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
-            List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments, LocalDate rescheduleFrom);
+            List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments, LocalDate rescheduleFrom,boolean isMeetingSkipOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 
     LoanRepaymentScheduleInstallment calculatePrepaymentAmount(MonetaryCurrency currency, LocalDate onDate,
             LoanApplicationTerms loanApplicationTerms, MathContext mc, Set<LoanCharge> charges, HolidayDetailDTO holidayDetailDTO,
             List<LoanTransaction> loanTransactions, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
-            List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments);
+            List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments,boolean isMeetingSkipOnFirstDayOfMonth,boolean isClanderBelongsGroup,int numberOfDays);
 
     LoanRescheduleModel reschedule(final MathContext mathContext, final LoanRescheduleRequest loanRescheduleRequest,
             final ApplicationCurrency applicationCurrency, final HolidayDetailDTO holidayDetailDTO, CalendarInstance restCalendarInstance,
-            CalendarInstance compoundingCalendarInstance, final Calendar loanCalendar, FloatingRateDTO floatingRateDTO);
+            CalendarInstance compoundingCalendarInstance, final Calendar loanCalendar, FloatingRateDTO floatingRateDTO,boolean isSkippingMeetingOnFirstDayOfMonthEnabled,boolean isClanderBelongsGroup,final int numberOfDays);
 }

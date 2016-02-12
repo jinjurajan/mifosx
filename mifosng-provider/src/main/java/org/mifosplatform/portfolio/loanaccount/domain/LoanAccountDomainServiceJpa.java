@@ -157,9 +157,14 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         final ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom,
                 holidayDetailDto);
 
+        boolean isMeetingSkipOnFirstDayOfMonth= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+    	
         final ChangedTransactionDetail changedTransactionDetail = loan.makeRepayment(newRepaymentTransaction,
                 defaultLoanLifecycleStateMachine(), existingTransactionIds, existingReversedTransactionIds, isRecoveryRepayment,
-                scheduleGeneratorDTO, currentUser, isHolidayValidationDone);
+                scheduleGeneratorDTO, currentUser, isHolidayValidationDone,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
 
         saveLoanTransactionWithDataIntegrityViolationChecks(newRepaymentTransaction);
 

@@ -342,8 +342,14 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 this.loanScheduleHistoryWritePlatformService.createAndSaveLoanScheduleArchive(loan.fetchRepaymentScheduleInstallments(),
                         loan, null);
             }
-
-            changedTransactionDetail = loan.disburse(currentUser, command, changes, scheduleGeneratorDTO);
+            boolean isCalendarBelongsTogroup=false;
+            if( loan.getGroupId()!=null)
+            {
+         	   isCalendarBelongsTogroup=true;
+            }
+            int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+            boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+            changedTransactionDetail = loan.disburse(currentUser, command, changes, scheduleGeneratorDTO,isMeetingSkipOnFirstDayOfMonth,isCalendarBelongsTogroup,numberOfDays);
         }
         if (!changes.isEmpty()) {
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
@@ -575,8 +581,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                     this.loanScheduleHistoryWritePlatformService.createAndSaveLoanScheduleArchive(
                             loan.fetchRepaymentScheduleInstallments(), loan, null);
                 }
-
-                changedTransactionDetail = loan.disburse(currentUser, command, changes, scheduleGeneratorDTO);
+                
+                boolean isCalendarBelongsTogroup=false;
+               if( loan.getGroupId()!=null)
+               {
+            	   isCalendarBelongsTogroup=true;
+               }
+                boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+                int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+                changedTransactionDetail = loan.disburse(currentUser, command, changes, scheduleGeneratorDTO,isMeetingSkipOnFirstDayOfMonth,isCalendarBelongsTogroup,numberOfDays);
             }
             if (!changes.isEmpty()) {
 
@@ -648,8 +661,12 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final LocalDate recalculateFrom = null;
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
 
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
         final Map<String, Object> changes = loan.undoDisbursal(scheduleGeneratorDTO, existingTransactionIds,
-                existingReversedTransactionIds, currentUser);
+                existingReversedTransactionIds, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
 
         if (!changes.isEmpty()) {
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
@@ -830,10 +847,15 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-
+        
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        
         final ChangedTransactionDetail changedTransactionDetail = loan.adjustExistingTransaction(newTransactionDetail,
                 defaultLoanLifecycleStateMachine(), transactionToAdjust, existingTransactionIds, existingReversedTransactionIds,
-                scheduleGeneratorDTO, currentUser);
+                scheduleGeneratorDTO, currentUser,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
 
         if (newTransactionDetail.isGreaterThanZero(loan.getPrincpal().getCurrency())) {
             if (paymentDetail != null) {
@@ -950,9 +972,14 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
+       boolean isMeetingSkipOnFirstDayOfMonth= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+       int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+   	boolean isCalanderBelongToGroup=false;
+   	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+   	
         final ChangedTransactionDetail changedTransactionDetail = loan.waiveInterest(waiveInterestTransaction,
                 defaultLoanLifecycleStateMachine(), existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO,
-                currentUser);
+                currentUser,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
 
         this.loanTransactionRepository.save(waiveInterestTransaction);
 
@@ -1024,9 +1051,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        
         final ChangedTransactionDetail changedTransactionDetail = loan.closeAsWrittenOff(command, defaultLoanLifecycleStateMachine(),
-                changes, existingTransactionIds, existingReversedTransactionIds, currentUser, scheduleGeneratorDTO);
+                changes, existingTransactionIds, existingReversedTransactionIds, currentUser, scheduleGeneratorDTO,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
         LoanTransaction writeoff = changedTransactionDetail.getNewTransactionMappings().remove(0L);
         this.loanTransactionRepository.save(writeoff);
         for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
@@ -1085,8 +1116,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         }
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        
         ChangedTransactionDetail changedTransactionDetail = loan.close(command, defaultLoanLifecycleStateMachine(), changes,
-                existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO, currentUser);
+                existingTransactionIds, existingReversedTransactionIds, scheduleGeneratorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
         final LoanTransaction possibleClosingTransaction = changedTransactionDetail.getNewTransactionMappings().remove(0L);
         if (possibleClosingTransaction != null) {
             this.loanTransactionRepository.save(possibleClosingTransaction);
@@ -1261,6 +1297,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             updateOriginalSchedule(loan);
         }
         if (reprocessRequired) {
+        	boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
             ChangedTransactionDetail changedTransactionDetail = loan.reprocessTransactions();
             if (changedTransactionDetail != null) {
                 for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
@@ -1321,8 +1358,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         AppUser currentUser = getAppUserIfPresent();
         if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             ScheduleGeneratorDTO generatorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
+            boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+            int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        	boolean isCalanderBelongToGroup=false;
+        	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+            
             ChangedTransactionDetail changedTransactionDetail = loan.handleRegenerateRepaymentScheduleWithInterestRecalculation(
-                    generatorDTO, currentUser);
+                    generatorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
             saveLoanWithDataIntegrityViolationChecks(loan);
             if (changedTransactionDetail != null) {
                 for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
@@ -1477,10 +1519,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                 accruedCharge = accruedCharge.plus(chargePaidByData.getAmount());
             }
         }
-
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        boolean isCalendarBelongsToGroup=false;
+        if(loan.getGroupId()!=null){isCalendarBelongsToGroup=true;}
         final LoanTransaction waiveTransaction = loan.waiveLoanCharge(loanCharge, defaultLoanLifecycleStateMachine(), changes,
                 existingTransactionIds, existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge,
-                currentUser);
+                currentUser,isMeetingSkipOnFirstDayOfMonth,isCalendarBelongsToGroup,numberOfDays);
 
         this.loanTransactionRepository.save(waiveTransaction);
         saveLoanWithDataIntegrityViolationChecks(loan);
@@ -2385,8 +2430,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
 
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        
         ChangedTransactionDetail changedTransactionDetail = loan.undoWrittenOff(existingTransactionIds, existingReversedTransactionIds,
-                scheduleGeneratorDTO, currentUser);
+                scheduleGeneratorDTO, currentUser,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
         if (changedTransactionDetail != null) {
             for (final Map.Entry<Long, LoanTransaction> mapEntry : changedTransactionDetail.getNewTransactionMappings().entrySet()) {
                 this.loanTransactionRepository.save(mapEntry.getValue());
@@ -2494,9 +2544,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         AppUser currentUser = getAppUserIfPresent();
 
         if (command.entityId() != null) {
-
+             boolean isSkippingMeetingOnFirstDayOfMonthEnabled= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+             int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+         	boolean isCalanderBelongToGroup=false;
+         	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+             
             changedTransactionDetail = loan.updateDisbursementDateAndAmountForTranche(loanDisbursementDetails, command,
-                    changes, scheduleGeneratorDTO, currentUser);
+                    changes, scheduleGeneratorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
         } else {
             // BigDecimal setAmount = loan.getApprovedPrincipal();
             Collection<LoanDisbursementDetails> loanDisburseDetails = loan.getDisbursementDetails();
@@ -2508,11 +2562,19 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             }
 
             loan.repaymentScheduleDetail().setPrincipal(setAmount);
+            boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
 
             if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
-                loan.regenerateRepaymentScheduleWithInterestRecalculation(scheduleGeneratorDTO, currentUser);
+            	boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+            	int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+            	boolean isCalanderBelongToGroup=false;
+            	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+                loan.regenerateRepaymentScheduleWithInterestRecalculation(scheduleGeneratorDTO, currentUser,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
             } else {
-                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser);
+            	int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+            	boolean isCalanderBelongToGroup=false;
+            	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+                loan.regenerateRepaymentSchedule(scheduleGeneratorDTO, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
                 loan.processPostDisbursementTransactions();
             }
         }
@@ -2634,9 +2696,13 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final List<Long> existingReversedTransactionIds = new ArrayList<>();
 
         ScheduleGeneratorDTO generatorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
+        
         ChangedTransactionDetail changedTransactionDetail = loan.recalculateScheduleFromLastTransaction(generatorDTO,
-                existingTransactionIds, existingReversedTransactionIds, currentUser);
+                existingTransactionIds, existingReversedTransactionIds, currentUser,isSkippingMeetingOnFirstDayOfMonthEnabled,isCalanderBelongToGroup,numberOfDays);
 
         saveLoanWithDataIntegrityViolationChecks(loan);
 
@@ -2671,7 +2737,11 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     }
 
     private void createLoanScheduleArchive(final Loan loan, final ScheduleGeneratorDTO scheduleGeneratorDTO) {
-        LoanScheduleModel loanScheduleModel = loan.regenerateScheduleModel(scheduleGeneratorDTO);
+    	boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+    	boolean isCalendarBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalendarBelongToGroup=true;}
+    	int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        LoanScheduleModel loanScheduleModel = loan.regenerateScheduleModel(scheduleGeneratorDTO,isMeetingSkipOnFirstDayOfMonth,isCalendarBelongToGroup,numberOfDays);
         List<LoanRepaymentScheduleInstallment> installments = retrieveRepaymentScheduleFromModel(loanScheduleModel);
         this.loanScheduleHistoryWritePlatformService.createAndSaveLoanScheduleArchive(installments, loan, null);
 
@@ -2682,8 +2752,12 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         AppUser currentUser = getAppUserIfPresent();
         final LocalDate actualDisbursementDate = command.localDateValueOfParameterNamed("actualDisbursementDate");
         BigDecimal emiAmount = command.bigDecimalValueOfParameterNamed(LoanApiConstants.emiAmountParameterName);
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+    	boolean isCalanderBelongToGroup=false;
+    	if(loan.getGroupId()!=null){isCalanderBelongToGroup=true;}
         loan.regenerateScheduleOnDisbursement(scheduleGeneratorDTO, recalculateSchedule, actualDisbursementDate, emiAmount, currentUser, 
-        		nextPossibleRepaymentDate, rescheduledRepaymentDate);
+        		nextPossibleRepaymentDate, rescheduledRepaymentDate,isMeetingSkipOnFirstDayOfMonth,isCalanderBelongToGroup,numberOfDays);
     }
 
     private List<LoanRepaymentScheduleInstallment> retrieveRepaymentScheduleFromModel(LoanScheduleModel model) {
@@ -2781,9 +2855,14 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final List<Long> existingReversedTransactionIds = new ArrayList<>();
 
         ScheduleGeneratorDTO scheduleGeneratorDTO = this.loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFromDate);
-
-        final Map<String, Object> changes = loan.undoLastDisbursal(scheduleGeneratorDTO, existingTransactionIds,
-                existingReversedTransactionIds, currentUser, loan);
+        boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        
+        boolean isClanderBelongsGroup=false;
+        if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        
+                final Map<String, Object> changes = loan.undoLastDisbursal(scheduleGeneratorDTO, existingTransactionIds,
+                existingReversedTransactionIds, currentUser, loan,isSkippingMeetingOnFirstDayOfMonthEnabled,isClanderBelongsGroup,numberOfDays);
         if (!changes.isEmpty()) {
             saveAndFlushLoanWithDataIntegrityViolationChecks(loan);
             String noteText = null;

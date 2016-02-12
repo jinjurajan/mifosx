@@ -26,6 +26,7 @@ import org.joda.time.format.DateTimeFormatter;
 import org.mifosplatform.accounting.common.AccountingRuleType;
 import org.mifosplatform.infrastructure.codes.data.CodeValueData;
 import org.mifosplatform.infrastructure.codes.service.CodeValueReadPlatformService;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.data.EnumOptionData;
 import org.mifosplatform.infrastructure.core.domain.JdbcSupport;
 import org.mifosplatform.infrastructure.core.service.DateUtils;
@@ -45,7 +46,9 @@ import org.mifosplatform.portfolio.account.data.AccountTransferData;
 import org.mifosplatform.portfolio.accountdetails.domain.AccountType;
 import org.mifosplatform.portfolio.accountdetails.service.AccountEnumerations;
 import org.mifosplatform.portfolio.calendar.data.CalendarData;
+import org.mifosplatform.portfolio.calendar.domain.Calendar;
 import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
+import org.mifosplatform.portfolio.calendar.domain.CalendarInstance;
 import org.mifosplatform.portfolio.calendar.service.CalendarReadPlatformService;
 import org.mifosplatform.portfolio.charge.data.ChargeData;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
@@ -135,6 +138,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory;
     private final FloatingRatesReadPlatformService floatingRatesReadPlatformService;
     private final LoanUtilService loanUtilService;
+    private final ConfigurationDomainService configurationDomainService;
 
     @Autowired
     public LoanReadPlatformServiceImpl(final PlatformSecurityContext context, final LoanRepository loanRepository,
@@ -147,7 +151,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
             final CalendarReadPlatformService calendarReadPlatformService, final StaffReadPlatformService staffReadPlatformService,
             final PaymentTypeReadPlatformService paymentTypeReadPlatformService,
             final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory,
-            final FloatingRatesReadPlatformService floatingRatesReadPlatformService, final LoanUtilService loanUtilService) {
+            final FloatingRatesReadPlatformService floatingRatesReadPlatformService, final LoanUtilService loanUtilService,final ConfigurationDomainService configurationDomainService) {
         this.context = context;
         this.loanRepository = loanRepository;
         this.loanTransactionRepository = loanTransactionRepository;
@@ -167,6 +171,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         this.loanRepaymentScheduleTransactionProcessorFactory = loanRepaymentScheduleTransactionProcessorFactory;
         this.floatingRatesReadPlatformService = floatingRatesReadPlatformService;
         this.loanUtilService = loanUtilService;
+        this.configurationDomainService=configurationDomainService;
     }
 
     @Override
@@ -409,7 +414,12 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         final LocalDate earliestUnpaidInstallmentDate = LocalDate.now();
         final LocalDate recalculateFrom = null;
         final ScheduleGeneratorDTO scheduleGeneratorDTO = loanUtilService.buildScheduleGeneratorDTO(loan, recalculateFrom);
-        final LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment = loan.fetchPrepaymentDetail(scheduleGeneratorDTO, onDate);
+        boolean isMeetingSkipOnFirstDayOfMonth= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+      
+        boolean isClanderBelongsGroup=false;
+        if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        final LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment = loan.fetchPrepaymentDetail(scheduleGeneratorDTO, onDate,isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.REPAYMENT);
         final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
         final BigDecimal outstandingLoanBalance = loanRepaymentScheduleInstallment.getPrincipalOutstanding(currency).getAmount();

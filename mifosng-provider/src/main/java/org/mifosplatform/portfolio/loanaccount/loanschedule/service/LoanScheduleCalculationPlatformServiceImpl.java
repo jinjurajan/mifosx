@@ -26,6 +26,10 @@ import org.mifosplatform.organisation.monetary.domain.MonetaryCurrency;
 import org.mifosplatform.organisation.monetary.domain.Money;
 import org.mifosplatform.organisation.monetary.service.CurrencyReadPlatformService;
 import org.mifosplatform.portfolio.accountdetails.domain.AccountType;
+import org.mifosplatform.portfolio.calendar.domain.Calendar;
+import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
+import org.mifosplatform.portfolio.calendar.domain.CalendarInstance;
+import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
 import org.mifosplatform.portfolio.loanaccount.data.ScheduleGeneratorDTO;
 import org.mifosplatform.portfolio.loanaccount.domain.Loan;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanDisbursementDetails;
@@ -64,6 +68,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     private final ConfigurationDomainService configurationDomainService;
     private final CurrencyReadPlatformService currencyReadPlatformService;
     private final LoanUtilService loanUtilService;
+    private final CalendarInstanceRepository calendarInstanceRepository;
 
     @Autowired
     public LoanScheduleCalculationPlatformServiceImpl(final CalculateLoanScheduleQueryFromApiJsonHelper fromApiJsonDeserializer,
@@ -73,7 +78,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
             final LoanAssembler loanAssembler,
             final LoanRepaymentScheduleTransactionProcessorFactory loanRepaymentScheduleTransactionProcessorFactory,
             final ConfigurationDomainService configurationDomainService, final CurrencyReadPlatformService currencyReadPlatformService,
-            final LoanUtilService loanUtilService) {
+            final LoanUtilService loanUtilService,final CalendarInstanceRepository calendarInstanceRepository) {
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
         this.loanScheduleAssembler = loanScheduleAssembler;
         this.fromJsonHelper = fromJsonHelper;
@@ -86,6 +91,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         this.configurationDomainService = configurationDomainService;
         this.currencyReadPlatformService = currencyReadPlatformService;
         this.loanUtilService = loanUtilService;
+        this.calendarInstanceRepository=calendarInstanceRepository;
     }
 
     @Override
@@ -131,6 +137,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
     public void updateFutureSchedule(LoanScheduleData loanScheduleData, final Long loanId) {
 
         final Loan loan = this.loanAssembler.assembleFrom(loanId);
+        final Long groupId=loan.getGroupId();
 
         LocalDate today = DateUtils.getLocalDateOfTenant();
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = loanRepaymentScheduleTransactionProcessorFactory
@@ -159,7 +166,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment = this.loanScheduleAssembler.calculatePrepaymentAmount(currency,
                 today, loanApplicationTerms, loan.charges(), loan.getOfficeId(),
                 loan.retreiveListOfTransactionsPostDisbursementExcludeAccruals(), loanRepaymentScheduleTransactionProcessor,
-                loan.fetchRepaymentScheduleInstallments());
+                loan.fetchRepaymentScheduleInstallments(),groupId);
         Money totalAmount = totalPrincipal.plus(loanRepaymentScheduleInstallment.getFeeChargesOutstanding(currency)).plus(
                 loanRepaymentScheduleInstallment.getPenaltyChargesOutstanding(currency));
         Money interestDue = Money.zero(currency);
@@ -178,10 +185,17 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
                     DateUtils.getLocalDateTimeOfTenant(), null);
             modifiedTransactions.add(ondayPaymentTransaction);
         }
-
+        boolean isMeetingSkipOnFirstDayOfMonth= configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        boolean isClanderBelongsGroup=false;
+        /*Calendar currentCalendar=loanApplicationTerms.getLoanCalendar();
+       
+        CalendarInstance calendarIntance=calendarInstanceRepository.findByEntityIdAndEntityTypeIdAndCalendarTypeId(groupId, CalendarEntityType.GROUPS.getValue(), currentCalendar.getTypeId());*/
+        if(loan.getGroupId()!=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+        
         LoanScheduleModel model = this.loanScheduleAssembler.assembleForInterestRecalculation(loanApplicationTerms, loan.getOfficeId(),
                 modifiedTransactions, loan.charges(), loanRepaymentScheduleTransactionProcessor, loan.fetchRepaymentScheduleInstallments(),
-                loan.fetchInterestRecalculateFromDate());
+                loan.fetchInterestRecalculateFromDate(),isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
         LoanScheduleData scheduleDate = model.toData();
         Collection<LoanSchedulePeriodData> periodDatas = scheduleDate.getPeriods();
         for (LoanSchedulePeriodData periodData : periodDatas) {

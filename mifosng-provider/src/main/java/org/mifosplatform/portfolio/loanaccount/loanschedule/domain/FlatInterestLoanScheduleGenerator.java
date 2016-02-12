@@ -11,12 +11,18 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.organisation.monetary.domain.Money;
 import org.mifosplatform.portfolio.loanaccount.data.LoanTermVariationsData;
 
 public class FlatInterestLoanScheduleGenerator extends AbstractLoanScheduleGenerator {
 
-    @Override
+    /*public FlatInterestLoanScheduleGenerator(ConfigurationDomainService configurationDomainService) {
+		super(configurationDomainService);
+		// TODO Auto-generated constructor stub
+	}*/
+
+	@Override
     public PrincipalInterest calculatePrincipalInterestComponentsForPeriod(final PaymentPeriodsInOneYearCalculator calculator,
             final double interestCalculationGraceOnRepaymentPeriodFraction, final Money totalCumulativePrincipal,
             final Money totalCumulativeInterest, final Money totalInterestDueForLoan, final Money cumulatingInterestPaymentDueToGrace,

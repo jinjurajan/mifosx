@@ -109,9 +109,16 @@ public class LoanReschedulePreviewPlatformServiceImpl implements LoanRescheduleP
             loanCalendar = loanCalendarInstance.getCalendar();
         }
         final FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
+        
+        boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+        
+        boolean isClanderBelongsGroup=false;
+        
+        if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+        int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
         LoanRescheduleModel loanRescheduleModel = new DefaultLoanReschedulerFactory().reschedule(mathContext, interestMethod,
                 loanRescheduleRequest, applicationCurrency, holidayDetailDTO, restCalendarInstance, compoundingCalendarInstance,
-                loanCalendar, floatingRateDTO);
+                loanCalendar, floatingRateDTO,isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
         LoanRescheduleModel loanRescheduleModelWithOldPeriods = LoanRescheduleModel.createWithSchedulehistory(loanRescheduleModel,
                 oldPeriods);
         return loanRescheduleModelWithOldPeriods;

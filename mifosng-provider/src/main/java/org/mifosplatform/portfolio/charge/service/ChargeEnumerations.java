@@ -92,6 +92,10 @@ public class ChargeEnumerations {
             case CLIENT:
                 optionData = new EnumOptionData(ChargeAppliesTo.CLIENT.getValue().longValue(), ChargeAppliesTo.CLIENT.getCode(), "Client");
             break;
+            case CHARGE:
+                optionData = new EnumOptionData(ChargeAppliesTo.CHARGE.getValue().longValue(), ChargeAppliesTo.CHARGE.getCode(), "Charge");
+            break;
+            
             default:
                 optionData = new EnumOptionData(ChargeAppliesTo.INVALID.getValue().longValue(), ChargeAppliesTo.INVALID.getCode(),
                         "Invalid");

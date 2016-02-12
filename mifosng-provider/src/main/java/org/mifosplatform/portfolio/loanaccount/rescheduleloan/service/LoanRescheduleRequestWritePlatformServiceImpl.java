@@ -342,9 +342,15 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
                     loanCalendar = loanCalendarInstance.getCalendar();
                 }
                 FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
+                boolean isSkippingMeetingOnFirstDayOfMonthEnabled=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+                
+                boolean isClanderBelongsGroup=false;
+                
+                if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+                int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
                 LoanRescheduleModel loanRescheduleModel = new DefaultLoanReschedulerFactory().reschedule(mathContext, interestMethod,
                         loanRescheduleRequest, applicationCurrency, holidayDetailDTO, restCalendarInstance, compoundingCalendarInstance,
-                        loanCalendar, floatingRateDTO);
+                        loanCalendar, floatingRateDTO,isSkippingMeetingOnFirstDayOfMonthEnabled,isClanderBelongsGroup,numberOfDays);
 
                 final Collection<LoanRescheduleModelRepaymentPeriod> periods = loanRescheduleModel.getPeriods();
                 List<LoanRepaymentScheduleInstallment> repaymentScheduleInstallments = loan.getRepaymentScheduleInstallments();
@@ -484,10 +490,14 @@ public class LoanRescheduleRequestWritePlatformServiceImpl implements LoanResche
                         accruedCharge = accruedCharge.plus(chargePaidByData.getAmount());
                     }
                 }
-
+                boolean isMeetingSkipOnFirstDayOfMonth=configurationDomainService.isSkippingMeetingOnFirstDayOfMonthEnabled();
+                boolean isClanderBelongsGroup=false;
+                if(loan.getGroupId() !=null){isClanderBelongsGroup=true;}
+                int numberOfDays=configurationDomainService.retrieveSkippingMeetingPeriod().intValue();
+                
                 final LoanTransaction loanTransaction = loan.waiveLoanCharge(loanCharge, defaultLoanLifecycleStateMachine(), changes,
                         existingTransactionIds, existingReversedTransactionIds, loanInstallmentNumber, scheduleGeneratorDTO, accruedCharge,
-                        currentUser);
+                        currentUser,isMeetingSkipOnFirstDayOfMonth,isClanderBelongsGroup,numberOfDays);
 
                 this.loanTransactionRepository.save(loanTransaction);
 
